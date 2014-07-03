@@ -29,6 +29,21 @@ GLfloat     rtri;                  // Angle For The Triangle
 GLfloat     rquad;                 // Angle For The Quad
 GLfloat     tRot;
 
+BOOL    light;                                  // Lighting ON / OFF
+BOOL    lp;                                 // L Pressed?
+BOOL    fp;                                 // F Pressed?
+
+GLfloat xrot;                                   // X Rotation
+GLfloat yrot;                                   // Y Rotation
+GLfloat xspeed;                                 // X Rotation Speed
+GLfloat yspeed;                                 // Y Rotation Speed
+GLfloat z=-5.0f;                                // Depth Into The Screen
+
+GLfloat LightAmbient[] = { 0.5f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
+
+GLfloat LightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };  				// Diffuse Light Values
+GLfloat LightPosition[] = { 0.0f, 0.0f, 2.0f, 1.0f };				// Light Position
+
 Object3D object;
 
 using namespace std;
