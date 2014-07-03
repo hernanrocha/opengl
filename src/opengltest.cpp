@@ -29,20 +29,20 @@ GLfloat     rtri;                  // Angle For The Triangle
 GLfloat     rquad;                 // Angle For The Quad
 GLfloat     tRot;
 
-BOOL    light;                                  // Lighting ON / OFF
+BOOL    light = true;                                  // Lighting ON / OFF
 BOOL    lp;                                 // L Pressed?
 BOOL    fp;                                 // F Pressed?
 
 GLfloat xrot;                                   // X Rotation
 GLfloat yrot;                                   // Y Rotation
-GLfloat xspeed;                                 // X Rotation Speed
-GLfloat yspeed;                                 // Y Rotation Speed
+GLfloat xspeed = 0.01;                                 // X Rotation Speed
+GLfloat yspeed = 0.01;                                 // Y Rotation Speed
 GLfloat z=-5.0f;                                // Depth Into The Screen
 
-GLfloat LightAmbient[] = { 0.5f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
+GLfloat LightAmbient[] = { 1.0f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
 
 GLfloat LightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };  				// Diffuse Light Values
-GLfloat LightPosition[] = { 0.0f, 0.0f, 2.0f, 1.0f };				// Light Position
+GLfloat LightPosition[] = { 0.0f, 0.0f, 10.0f, 1.0f };				// Light Position
 
 GLuint  filter;                                 // Which Filter To Use
 GLuint  texture[3];                             // Storage for 3 textures
@@ -87,6 +87,8 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 	// Load The Bitmap, Check For Errors, If Bitmap's Not Found Quit
 	if (TextureImage[0]=LoadBMP("Data/Crate.bmp"))
 	{
+		cout << "Cargar texturas" << endl;
+
 		Status=TRUE;									// Set The Status To TRUE
 
 		glGenTextures(3, &texture[0]);					// Create Three Textures
@@ -112,6 +114,8 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 
 	if (TextureImage[0])								// If Texture Exists
 	{
+		cout << "Existia..." << endl;
+
 		if (TextureImage[0]->data)						// If Texture Image Exists
 		{
 			free(TextureImage[0]->data);// Free The Texture Image Memory will not compile in dev
@@ -131,23 +135,19 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 			cout << "No cargadooo " << endl;									// If Texture Didn't Load Return FALSE
 		}
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
-  glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-  glDepthFunc(GL_LESS);				// The Type Of Depth Test To Do
-  glEnable(GL_DEPTH_TEST);			// Enables Depth Testing
-  glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
+	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
+	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
+	glClearColor(0.0f, 0.0f, 0.0f, 0.5f);				// Black Background
+	glClearDepth(1.0f);									// Depth Buffer Setup
+	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
+	glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
 
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();				// Reset The Projection Matrix
-
-  gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
-
-  glMatrixMode(GL_MODELVIEW);
+	glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);		// Setup The Ambient Light
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);		// Setup The Diffuse Light
+	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
+	glEnable(GL_LIGHT1);								// Enable Light One
 }
-
-
-
-
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
 void ReSizeGLScene(int Width, int Height)
@@ -167,33 +167,6 @@ void ReSizeGLScene(int Width, int Height)
 /* The main drawing function. */
 void DrawGLScene(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
-
-	// Draw a Triangle
-	glLoadIdentity();				// Reset The View
-	glTranslatef(-1.5f,0.0f,-6.0f);		// Move Left 1.5 Units And Into The Screen 6.0
-	glRotatef(rtri,0.0f,1.0f,0.0f);             // Rotate The Triangle On The Y axis
-
-	glBegin(GL_POLYGON);				// start drawing a polygon
-		glColor3f(1.0f, 0.0f, 0.0f);
-		glVertex3f( 0.0f, 1.0f, 0.0f);		// Top
-		glColor3f(0.0f, 1.0f, 0.0f);
-		glVertex3f( 1.0f,-1.0f, 0.0f);		// Bottom Right
-		glColor3f(0.0f, 0.0f, 1.0f);
-		glVertex3f(-1.0f,-1.0f, 0.0f);		// Bottom Left
-	glEnd();					// we're done with the polygon
-
-	// Draw a Square (quadrilateral)
-	glLoadIdentity();                   // Reset The Current Modelview Matrix
-	glTranslatef(1.5f,0.0f,-6.0f);              // Move Right 1.5 Units And Into The Screen 6.0
-	glRotatef(45.0f,0.0f,0.0f,-1.0f);            // Rotate The Quad On The X axis
-
-	glColor3f(0.5f, 0.5f, 0.5f);
-	glBegin(GL_QUADS);				// start drawing a polygon (4 sided)
-		glVertex3f(-1.0f, 1.0f, 0.0f);		// Top Left
-		glVertex3f( 1.0f, 1.0f, 0.0f);		// Top Right
-		glVertex3f( 1.0f,-1.0f, 0.0f);		// Bottom Right
-		glVertex3f(-1.0f,-1.0f, 0.0f);		// Bottom Left
-	glEnd();					// done with the polygon
 
 	glLoadIdentity();
 	glTranslatef(0.0f, 0.0f, -20.0f);
@@ -224,7 +197,6 @@ void DrawGLScene(){
 
 			}
 		}
-		//gl
 	glEnd();
 
 	/*if (keys[VK_F1])                // Is F1 Being Pressed?
@@ -244,6 +216,8 @@ void DrawGLScene(){
 
 	//rtri+=0.02f;                     // Increase The Rotation Variable For The Triangle
 	//rquad-=0.015f;                   // Decrease The Rotation Variable For The Quad
+	xrot+=xspeed;
+	yrot+=yspeed;
 	tRot += 0.01f;
 }
 
@@ -260,6 +234,17 @@ void keyPressed(unsigned char key, int x, int y)
 
 		/* exit the program...normal termination. */
 		exit(0);
+    }else if (key == 'l'){
+    	cout << "Cambiando.." << key << endl;
+    	light=!light;               // Toggle Light TRUE/FALSE
+    	if (!light)             // If Not Light
+    	{
+    		glDisable(GL_LIGHTING);     // Disable Lighting
+    	}
+    	else                    // Otherwise
+    	{
+    		glEnable(GL_LIGHTING);      // Enable Lighting
+    	}
     }
 }
 
