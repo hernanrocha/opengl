@@ -7,8 +7,7 @@
 // (email Richard Campbell at ulmont@bellsouth.net)
 //
 #include <GL/glut.h>    // Header File For The GLUT Library
-#include <GL/gl.h>	// Header File For The OpenGL32 Library
-#include <GL/glu.h>	// Header File For The GLu32 Library
+#include <GL/GLAux.h>
 #include <unistd.h>     // Header file for sleeping.
 #include <time.h>
 
@@ -17,6 +16,7 @@
 #include <fstream>
 
 #include "Object3D.h"
+
 
 /* ascii code for the escape key */
 #define ESCAPE 27
@@ -44,6 +44,9 @@ GLfloat LightAmbient[] = { 0.5f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
 GLfloat LightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };  				// Diffuse Light Values
 GLfloat LightPosition[] = { 0.0f, 0.0f, 2.0f, 1.0f };				// Light Position
 
+GLuint  filter;                                 // Which Filter To Use
+GLuint  texture[3];                             // Storage for 3 textures
+
 Object3D object;
 
 using namespace std;
@@ -51,9 +54,83 @@ using namespace std;
 /* The number of our GLUT window */
 int window;
 
+AUX_RGBImageRec *LoadBMP(char *Filename)                    // Loads A Bitmap Image
+{
+    FILE *File=NULL;                            // File Handle
+
+    if (!Filename)                              // Make Sure A Filename Was Given
+    {
+        return NULL;                            // If Not Return NULL
+    }
+
+    File=fopen(Filename,"r");                       // Check To See If The File Exists
+
+    if (File)                               // Does The File Exist?
+    {
+    	cout << "Existe" << endl;
+        fclose(File);                           // Close The Handle
+        return auxDIBImageLoad(Filename);               // Load The Bitmap And Return A Pointer
+    }else{
+        cout << "No encontrado " << endl;
+    }
+    return NULL;                                // If Load Failed Return NULL
+}
+
+int LoadGLTextures()									// Load Bitmaps And Convert To Textures
+{
+	int Status=FALSE;									// Status Indicator
+
+	AUX_RGBImageRec *TextureImage[1];					// Create Storage Space For The Texture
+
+	memset(TextureImage,0,sizeof(void *)*1);           	// Set The Pointer To NULL
+
+	// Load The Bitmap, Check For Errors, If Bitmap's Not Found Quit
+	if (TextureImage[0]=LoadBMP("Data/Crate.bmp"))
+	{
+		Status=TRUE;									// Set The Status To TRUE
+
+		glGenTextures(3, &texture[0]);					// Create Three Textures
+
+		// Create Nearest Filtered Texture
+		glBindTexture(GL_TEXTURE_2D, texture[0]);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+
+		// Create Linear Filtered Texture
+		glBindTexture(GL_TEXTURE_2D, texture[1]);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+
+		// Create MipMapped Texture
+		glBindTexture(GL_TEXTURE_2D, texture[2]);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+	}
+
+	if (TextureImage[0])								// If Texture Exists
+	{
+		if (TextureImage[0]->data)						// If Texture Image Exists
+		{
+			free(TextureImage[0]->data);// Free The Texture Image Memory will not compile in dev
+		}
+
+		free(TextureImage[0]);							// Free The Image Structure
+	}
+
+	return Status;										// Return The Status
+}
+
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
 {
+	if (!LoadGLTextures())								// Jump To Texture Loading Routine
+		{
+			cout << "No cargadooo " << endl;									// If Texture Didn't Load Return FALSE
+		}
+
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
   glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
   glDepthFunc(GL_LESS);				// The Type Of Depth Test To Do
@@ -67,6 +144,10 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
   glMatrixMode(GL_MODELVIEW);
 }
+
+
+
+
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
 void ReSizeGLScene(int Width, int Height)
@@ -220,7 +301,7 @@ int main(int argc, char **argv) {
   glutDisplayFunc(&DrawGLScene);
 
   /* Go fullscreen.  This is as soon as possible. */
-  glutFullScreen();
+  //glutFullScreen();
 
   /* Even if there are no events, redraw our gl scene. */
   glutIdleFunc(&DrawGLScene);
