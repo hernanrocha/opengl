@@ -37,7 +37,6 @@ GLfloat xrot;                                   // X Rotation
 GLfloat yrot;                                   // Y Rotation
 GLfloat xspeed = 0.01;                                 // X Rotation Speed
 GLfloat yspeed = 0.01;                                 // Y Rotation Speed
-GLfloat z=-5.0f;                                // Depth Into The Screen
 
 GLfloat LightAmbient[] = { 1.0f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
 
@@ -47,12 +46,80 @@ GLfloat LightPosition[] = { 0.0f, 0.0f, 10.0f, 1.0f };				// Light Position
 GLuint  filter;                                 // Which Filter To Use
 GLuint  texture[3];                             // Storage for 3 textures
 
+const float piover180 = 0.0174532925f;
+float heading;
+float xpos;
+float zpos;
+
+GLfloat walkbias = 0;
+GLfloat walkbiasangle = 0;
+GLfloat lookupdown = 0.0f;
+GLfloat	z=0.0f;				// Depth Into The Screen
+
 Object3D object;
 
 using namespace std;
 
 /* The number of our GLUT window */
 int window;
+
+typedef struct tagVERTEX
+{
+	float x, y, z;
+	float u, v;
+} VERTEX;
+
+typedef struct tagTRIANGLE
+{
+	VERTEX vertex[3];
+} TRIANGLE;
+
+typedef struct tagSECTOR
+{
+	int numtriangles;
+	TRIANGLE* triangle;
+} SECTOR;
+
+SECTOR sector1;				// Our Model Goes Here:
+
+void readstr(FILE *f,char *string)
+{
+	do
+	{
+		fgets(string, 255, f);
+	} while ((string[0] == '/') || (string[0] == '\n'));
+	return;
+}
+
+void SetupWorld()
+{
+	float x, y, z, u, v;
+	int numtriangles;
+	FILE *filein;
+	char oneline[255];
+	filein = fopen("data/world.txt", "rt");				// File To Load World Data From
+
+	readstr(filein,oneline);
+	sscanf(oneline, "NUMPOLLIES %d\n", &numtriangles);
+
+	sector1.triangle = new TRIANGLE[numtriangles];
+	sector1.numtriangles = numtriangles;
+	for (int loop = 0; loop < numtriangles; loop++)
+	{
+		for (int vert = 0; vert < 3; vert++)
+		{
+			readstr(filein,oneline);
+			sscanf(oneline, "%f %f %f %f %f", &x, &y, &z, &u, &v);
+			sector1.triangle[loop].vertex[vert].x = x;
+			sector1.triangle[loop].vertex[vert].y = y;
+			sector1.triangle[loop].vertex[vert].z = z;
+			sector1.triangle[loop].vertex[vert].u = u;
+			sector1.triangle[loop].vertex[vert].v = v;
+		}
+	}
+	fclose(filein);
+	return;
+}
 
 AUX_RGBImageRec *LoadBMP(char *Filename)                    // Loads A Bitmap Image
 {
@@ -146,7 +213,10 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 	glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);		// Setup The Ambient Light
 	glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);		// Setup The Diffuse Light
 	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
-	glEnable(GL_LIGHT1);								// Enable Light One
+	glEnable(GL_LIGHT1);
+
+	// Enable Light One
+	SetupWorld();
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
@@ -168,7 +238,53 @@ void ReSizeGLScene(int Width, int Height)
 void DrawGLScene(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
 
-	glLoadIdentity();
+	glLoadIdentity();									// Reset The View
+
+		GLfloat x_m, y_m, z_m, u_m, v_m;
+		GLfloat xtrans = -xpos;
+		GLfloat ztrans = -zpos;
+		GLfloat ytrans = -walkbias-0.25f;
+		GLfloat sceneroty = 360.0f - yrot;
+
+		int numtriangles;
+
+		glRotatef(lookupdown,1.0f,0,0);
+		glRotatef(sceneroty,0,1.0f,0);
+
+		glTranslatef(xtrans, ytrans, ztrans);
+		glBindTexture(GL_TEXTURE_2D, texture[filter]);
+
+		numtriangles = sector1.numtriangles;
+
+		// Process Each Triangle
+		for (int loop_m = 0; loop_m < numtriangles; loop_m++)
+		{
+			glBegin(GL_TRIANGLES);
+				glNormal3f( 0.0f, 0.0f, 1.0f);
+				x_m = sector1.triangle[loop_m].vertex[0].x;
+				y_m = sector1.triangle[loop_m].vertex[0].y;
+				z_m = sector1.triangle[loop_m].vertex[0].z;
+				u_m = sector1.triangle[loop_m].vertex[0].u;
+				v_m = sector1.triangle[loop_m].vertex[0].v;
+				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+
+				x_m = sector1.triangle[loop_m].vertex[1].x;
+				y_m = sector1.triangle[loop_m].vertex[1].y;
+				z_m = sector1.triangle[loop_m].vertex[1].z;
+				u_m = sector1.triangle[loop_m].vertex[1].u;
+				v_m = sector1.triangle[loop_m].vertex[1].v;
+				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+
+				x_m = sector1.triangle[loop_m].vertex[2].x;
+				y_m = sector1.triangle[loop_m].vertex[2].y;
+				z_m = sector1.triangle[loop_m].vertex[2].z;
+				u_m = sector1.triangle[loop_m].vertex[2].u;
+				v_m = sector1.triangle[loop_m].vertex[2].v;
+				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+			glEnd();
+		}
+
+	/*glLoadIdentity();
 	glTranslatef(0.0f, 0.0f, -20.0f);
 	glRotatef(tRot, 0.0f, 1.0f, 0.0f);
 	glColor3f(1.0f, 0.0f, 0.0f);
@@ -197,7 +313,7 @@ void DrawGLScene(){
 
 			}
 		}
-	glEnd();
+	glEnd();*/
 
 	/*if (keys[VK_F1])                // Is F1 Being Pressed?
 	{
