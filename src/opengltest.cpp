@@ -35,8 +35,13 @@ BOOL    fp;                                 // F Pressed?
 
 GLfloat xrot;                                   // X Rotation
 GLfloat yrot;                                   // Y Rotation
+GLfloat zrot;									// Z Rotation
 GLfloat xspeed = 0.01;                                 // X Rotation Speed
 GLfloat yspeed = 0.01;                                 // Y Rotation Speed
+
+BOOL    move = true;
+BOOL    desplazar = false;
+GLfloat xTraslacion = 0;
 
 GLfloat LightAmbient[] = { 1.0f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
 
@@ -62,6 +67,7 @@ using namespace std;
 
 /* The number of our GLUT window */
 int window;
+int mirror;
 
 typedef struct tagVERTEX
 {
@@ -198,9 +204,9 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
 {
 	if (!LoadGLTextures())								// Jump To Texture Loading Routine
-		{
-			cout << "No cargadooo " << endl;									// If Texture Didn't Load Return FALSE
-		}
+	{
+		cout << "Textura no cargada " << endl;									// If Texture Didn't Load Return FALSE
+	}
 
 	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
 	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
@@ -222,6 +228,9 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
 void ReSizeGLScene(int Width, int Height)
 {
+	Width = 640;
+	Height = 480;
+
   if (Height==0)				// Prevent A Divide By Zero If The Window Is Too Small
     Height=1;
 
@@ -230,7 +239,8 @@ void ReSizeGLScene(int Width, int Height)
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
 
-  gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
+  //gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
+  gluPerspective(45.0f,(GLfloat) 4/3,0.1f,100.0f);
   glMatrixMode(GL_MODELVIEW);
 }
 
@@ -240,49 +250,49 @@ void DrawGLScene(){
 
 	glLoadIdentity();									// Reset The View
 
-		GLfloat x_m, y_m, z_m, u_m, v_m;
-		GLfloat xtrans = -xpos;
-		GLfloat ztrans = -zpos;
-		GLfloat ytrans = -walkbias-0.25f;
-		GLfloat sceneroty = 360.0f - yrot;
+	/*GLfloat x_m, y_m, z_m, u_m, v_m;
+	GLfloat xtrans = -xpos;
+	GLfloat ztrans = -zpos;
+	GLfloat ytrans = -walkbias-0.25f;
+	GLfloat sceneroty = 360.0f - yrot;
 
-		int numtriangles;
+	int numtriangles;
 
-		glRotatef(lookupdown,1.0f,0,0);
-		glRotatef(sceneroty,0,1.0f,0);
+	glRotatef(lookupdown,1.0f,0,0);
+	glRotatef(sceneroty,0,1.0f,0);
 
-		glTranslatef(xtrans, ytrans, ztrans);
-		glBindTexture(GL_TEXTURE_2D, texture[filter]);
+	glTranslatef(xtrans, ytrans, ztrans);
+	glBindTexture(GL_TEXTURE_2D, texture[filter]);
 
-		numtriangles = sector1.numtriangles;
+	numtriangles = sector1.numtriangles;
 
-		// Process Each Triangle
-		for (int loop_m = 0; loop_m < numtriangles; loop_m++)
-		{
-			glBegin(GL_TRIANGLES);
-				glNormal3f( 0.0f, 0.0f, 1.0f);
-				x_m = sector1.triangle[loop_m].vertex[0].x;
-				y_m = sector1.triangle[loop_m].vertex[0].y;
-				z_m = sector1.triangle[loop_m].vertex[0].z;
-				u_m = sector1.triangle[loop_m].vertex[0].u;
-				v_m = sector1.triangle[loop_m].vertex[0].v;
-				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+	// Process Each Triangle
+	for (int loop_m = 0; loop_m < numtriangles; loop_m++)
+	{
+		glBegin(GL_TRIANGLES);
+			glNormal3f( 0.0f, 0.0f, 1.0f);
+			x_m = sector1.triangle[loop_m].vertex[0].x;
+			y_m = sector1.triangle[loop_m].vertex[0].y;
+			z_m = sector1.triangle[loop_m].vertex[0].z;
+			u_m = sector1.triangle[loop_m].vertex[0].u;
+			v_m = sector1.triangle[loop_m].vertex[0].v;
+			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
 
-				x_m = sector1.triangle[loop_m].vertex[1].x;
-				y_m = sector1.triangle[loop_m].vertex[1].y;
-				z_m = sector1.triangle[loop_m].vertex[1].z;
-				u_m = sector1.triangle[loop_m].vertex[1].u;
-				v_m = sector1.triangle[loop_m].vertex[1].v;
-				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+			x_m = sector1.triangle[loop_m].vertex[1].x;
+			y_m = sector1.triangle[loop_m].vertex[1].y;
+			z_m = sector1.triangle[loop_m].vertex[1].z;
+			u_m = sector1.triangle[loop_m].vertex[1].u;
+			v_m = sector1.triangle[loop_m].vertex[1].v;
+			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
 
-				x_m = sector1.triangle[loop_m].vertex[2].x;
-				y_m = sector1.triangle[loop_m].vertex[2].y;
-				z_m = sector1.triangle[loop_m].vertex[2].z;
-				u_m = sector1.triangle[loop_m].vertex[2].u;
-				v_m = sector1.triangle[loop_m].vertex[2].v;
-				glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
-			glEnd();
-		}
+			x_m = sector1.triangle[loop_m].vertex[2].x;
+			y_m = sector1.triangle[loop_m].vertex[2].y;
+			z_m = sector1.triangle[loop_m].vertex[2].z;
+			u_m = sector1.triangle[loop_m].vertex[2].u;
+			v_m = sector1.triangle[loop_m].vertex[2].v;
+			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
+		glEnd();
+	}*/
 
 	/*glLoadIdentity();
 	glTranslatef(0.0f, 0.0f, -20.0f);
@@ -315,26 +325,63 @@ void DrawGLScene(){
 		}
 	glEnd();*/
 
-	/*if (keys[VK_F1])                // Is F1 Being Pressed?
-	{
-	    keys[VK_F1]=FALSE;          // If So Make Key FALSE
-	    KillGLWindow();             // Kill Our Current Window
-	    fullscreen=!fullscreen;         // Toggle Fullscreen / Windowed Mode
-	    // Recreate Our OpenGL Window ( Modified )
-	    if (!CreateGLWindow("NeHe's First Polygon Tutorial",640,480,16,fullscreen))
-	    {
-	        return 0;           // Quit If Window Was Not Created
-	    }
-	}*/
+	glLoadIdentity();                           // Reset The Current Matrix
+	glTranslatef(xTraslacion,0.0f,-5.0f);                      // Move Into The Screen 5 Units
+
+	glRotatef(xrot,1.0f,0.0f,0.0f);                     // Rotate On The X Axis
+	glRotatef(yrot,0.0f,1.0f,0.0f);                     // Rotate On The Y Axis
+	glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
+
+	glBegin(GL_QUADS);
+	    // Front Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
+	    // Back Face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
+	    // Top Face
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    // Bottom Face
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    // Right face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    // Left Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	glEnd();
 
 	// since this is double buffered, swap the buffers to display what just got drawn.
 	glutSwapBuffers();
 
 	//rtri+=0.02f;                     // Increase The Rotation Variable For The Triangle
 	//rquad-=0.015f;                   // Decrease The Rotation Variable For The Quad
-	xrot+=xspeed;
-	yrot+=yspeed;
+	if (move){
+		xrot+=xspeed;
+		yrot+=yspeed;
+	}
+
+	if (desplazar){
+		xTraslacion -= 0.0001f;
+	}
 	tRot += 0.01f;
+
+	// Refresh the other window
+	glutPostRedisplay();
 }
 
 /* The function called whenever a key is pressed. */
@@ -361,6 +408,10 @@ void keyPressed(unsigned char key, int x, int y)
     	{
     		glEnable(GL_LIGHTING);      // Enable Lighting
     	}
+    }else if (key == 'm'){
+    	move = !move;
+    }else if (key == 't'){
+    	desplazar = !desplazar;
     }
 }
 
@@ -390,12 +441,10 @@ int main(int argc, char **argv) {
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 
   /* get a 640 x 480 window */
-  //glutInitWindowSize(640, 480);
+  glutInitWindowSize(400, 400);
 
   /* the window starts at the upper left corner of the screen */
   glutInitWindowPosition(0, 0);
-
-  /* Open a window */
   window = glutCreateWindow("OpenGL Test");
 
   /* Register the function to do all our OpenGL drawing. */
@@ -403,9 +452,6 @@ int main(int argc, char **argv) {
 
   /* Go fullscreen.  This is as soon as possible. */
   //glutFullScreen();
-
-  /* Even if there are no events, redraw our gl scene. */
-  glutIdleFunc(&DrawGLScene);
 
   /* Register the function called when our window is resized. */
   glutReshapeFunc(&ReSizeGLScene);
@@ -415,6 +461,18 @@ int main(int argc, char **argv) {
 
   /* Initialize our window. */
   InitGL(640, 480);
+
+  glutInitWindowPosition(400,0);
+  mirror = glutCreateWindow("Mirror Window");
+
+  glutDisplayFunc(&DrawGLScene);
+  //glutFullScreen();
+  glutReshapeFunc(&ReSizeGLScene);
+  glutKeyboardFunc(&keyPressed);
+  InitGL(640, 480);
+
+  /* Even if there are no events, redraw our gl scene. */
+  glutIdleFunc(&DrawGLScene);
 
   /* Start Event Processing Engine */
   glutMainLoop();
