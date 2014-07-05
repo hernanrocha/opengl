@@ -33,15 +33,17 @@ BOOL    light = true;                                  // Lighting ON / OFF
 BOOL    lp;                                 // L Pressed?
 BOOL    fp;                                 // F Pressed?
 
-GLfloat xrot;                                   // X Rotation
-GLfloat yrot;                                   // Y Rotation
 GLfloat zrot;									// Z Rotation
 GLfloat xspeed = 0.01;                                 // X Rotation Speed
 GLfloat yspeed = 0.01;                                 // Y Rotation Speed
+GLfloat xrot = xspeed;                                   // X Rotation
+GLfloat yrot = yspeed;                                   // Y Rotation
 
-BOOL    move = true;
+BOOL    move = false;
 BOOL    desplazar = false;
-GLfloat xTraslacion = 0;
+GLfloat xTraslacion = 0.0001f;
+BOOL    desplazarMirror = false;
+GLfloat xMirror = 0;
 
 GLfloat LightAmbient[] = { 1.0f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
 
@@ -67,67 +69,9 @@ using namespace std;
 
 /* The number of our GLUT window */
 int window;
-int mirror;
 
-typedef struct tagVERTEX
-{
-	float x, y, z;
-	float u, v;
-} VERTEX;
 
-typedef struct tagTRIANGLE
-{
-	VERTEX vertex[3];
-} TRIANGLE;
-
-typedef struct tagSECTOR
-{
-	int numtriangles;
-	TRIANGLE* triangle;
-} SECTOR;
-
-SECTOR sector1;				// Our Model Goes Here:
-
-void readstr(FILE *f,char *string)
-{
-	do
-	{
-		fgets(string, 255, f);
-	} while ((string[0] == '/') || (string[0] == '\n'));
-	return;
-}
-
-void SetupWorld()
-{
-	float x, y, z, u, v;
-	int numtriangles;
-	FILE *filein;
-	char oneline[255];
-	filein = fopen("data/world.txt", "rt");				// File To Load World Data From
-
-	readstr(filein,oneline);
-	sscanf(oneline, "NUMPOLLIES %d\n", &numtriangles);
-
-	sector1.triangle = new TRIANGLE[numtriangles];
-	sector1.numtriangles = numtriangles;
-	for (int loop = 0; loop < numtriangles; loop++)
-	{
-		for (int vert = 0; vert < 3; vert++)
-		{
-			readstr(filein,oneline);
-			sscanf(oneline, "%f %f %f %f %f", &x, &y, &z, &u, &v);
-			sector1.triangle[loop].vertex[vert].x = x;
-			sector1.triangle[loop].vertex[vert].y = y;
-			sector1.triangle[loop].vertex[vert].z = z;
-			sector1.triangle[loop].vertex[vert].u = u;
-			sector1.triangle[loop].vertex[vert].v = v;
-		}
-	}
-	fclose(filein);
-	return;
-}
-
-AUX_RGBImageRec *LoadBMP(char *Filename)                    // Loads A Bitmap Image
+AUX_RGBImageRec * loadBMP(char *Filename)                    // Loads A Bitmap Image
 {
     FILE *File=NULL;                            // File Handle
 
@@ -140,7 +84,6 @@ AUX_RGBImageRec *LoadBMP(char *Filename)                    // Loads A Bitmap Im
 
     if (File)                               // Does The File Exist?
     {
-    	cout << "Existe" << endl;
         fclose(File);                           // Close The Handle
         return auxDIBImageLoad(Filename);               // Load The Bitmap And Return A Pointer
     }else{
@@ -149,7 +92,7 @@ AUX_RGBImageRec *LoadBMP(char *Filename)                    // Loads A Bitmap Im
     return NULL;                                // If Load Failed Return NULL
 }
 
-int LoadGLTextures()									// Load Bitmaps And Convert To Textures
+int loadGLTextures()									// Load Bitmaps And Convert To Textures
 {
 	int Status=FALSE;									// Status Indicator
 
@@ -158,7 +101,7 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 	memset(TextureImage,0,sizeof(void *)*1);           	// Set The Pointer To NULL
 
 	// Load The Bitmap, Check For Errors, If Bitmap's Not Found Quit
-	if (TextureImage[0]=LoadBMP("Data/Crate.bmp"))
+	if (TextureImage[0]= loadBMP("Data/Crate.bmp"))
 	{
 		cout << "Cargar texturas" << endl;
 
@@ -187,7 +130,6 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 
 	if (TextureImage[0])								// If Texture Exists
 	{
-		cout << "Existia..." << endl;
 
 		if (TextureImage[0]->data)						// If Texture Image Exists
 		{
@@ -201,11 +143,11 @@ int LoadGLTextures()									// Load Bitmaps And Convert To Textures
 }
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
-void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
+void InitGL()	        // We call this right after our OpenGL window is created.
 {
-	if (!LoadGLTextures())								// Jump To Texture Loading Routine
-	{
-		cout << "Textura no cargada " << endl;									// If Texture Didn't Load Return FALSE
+	// Jump To Texture Loading Routine
+	if (!loadGLTextures()){
+		cout << "Textura no cargada " << endl;			// Texture Didn't Load
 	}
 
 	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
@@ -221,12 +163,25 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
 	glEnable(GL_LIGHT1);
 
-	// Enable Light One
-	SetupWorld();
+	// Matriz de proyeccion
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// (A) Proyeccion Ortografica
+	//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Central
+	//glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
+	glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
+
+	// (B) Proyeccion Perspectiva (distintos COP)
+
+	// Matriz de transformacion
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
-void ReSizeGLScene(int Width, int Height)
+void resizeGLScene(int Width, int Height)
 {
 	Width = 640;
 	Height = 480;
@@ -245,92 +200,24 @@ void ReSizeGLScene(int Width, int Height)
 }
 
 /* The main drawing function. */
-void DrawGLScene(){
+void drawGLScene(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
 
+	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();									// Reset The View
 
-	/*GLfloat x_m, y_m, z_m, u_m, v_m;
-	GLfloat xtrans = -xpos;
-	GLfloat ztrans = -zpos;
-	GLfloat ytrans = -walkbias-0.25f;
-	GLfloat sceneroty = 360.0f - yrot;
+	if (move){
+		xrot+=xspeed;
+		yrot+=yspeed;
+	}
 
-	int numtriangles;
-
-	glRotatef(lookupdown,1.0f,0,0);
-	glRotatef(sceneroty,0,1.0f,0);
-
-	glTranslatef(xtrans, ytrans, ztrans);
-	glBindTexture(GL_TEXTURE_2D, texture[filter]);
-
-	numtriangles = sector1.numtriangles;
-
-	// Process Each Triangle
-	for (int loop_m = 0; loop_m < numtriangles; loop_m++)
-	{
-		glBegin(GL_TRIANGLES);
-			glNormal3f( 0.0f, 0.0f, 1.0f);
-			x_m = sector1.triangle[loop_m].vertex[0].x;
-			y_m = sector1.triangle[loop_m].vertex[0].y;
-			z_m = sector1.triangle[loop_m].vertex[0].z;
-			u_m = sector1.triangle[loop_m].vertex[0].u;
-			v_m = sector1.triangle[loop_m].vertex[0].v;
-			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
-
-			x_m = sector1.triangle[loop_m].vertex[1].x;
-			y_m = sector1.triangle[loop_m].vertex[1].y;
-			z_m = sector1.triangle[loop_m].vertex[1].z;
-			u_m = sector1.triangle[loop_m].vertex[1].u;
-			v_m = sector1.triangle[loop_m].vertex[1].v;
-			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
-
-			x_m = sector1.triangle[loop_m].vertex[2].x;
-			y_m = sector1.triangle[loop_m].vertex[2].y;
-			z_m = sector1.triangle[loop_m].vertex[2].z;
-			u_m = sector1.triangle[loop_m].vertex[2].u;
-			v_m = sector1.triangle[loop_m].vertex[2].v;
-			glTexCoord2f(u_m,v_m); glVertex3f(x_m,y_m,z_m);
-		glEnd();
-	}*/
-
-	/*glLoadIdentity();
-	glTranslatef(0.0f, 0.0f, -20.0f);
-	glRotatef(tRot, 0.0f, 1.0f, 0.0f);
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glBegin(GL_TRIANGLES);
-		vector<ElementGroup> groups = object.getGroups();
-		map<int, Vertex3D> coordinates = object.getCoordinates();
-
-		int index = 1;
-		for (vector<ElementGroup>::iterator i = groups.begin(); i != groups.end(); ++i, ++index){
-			ElementGroup& group = *i;
-			int count = group.getCount();
-
-			vector<Incidence> elements = group.getElements();
-			for (vector<Incidence>::iterator j = elements.begin(); j != elements.end(); ++j){
-				Incidence& element = *j;
-				int a = element.getA();
-				int b = element.getB();
-				int c = element.getC();
-
-				Vertex3D v = coordinates.find(a)->second;
-				glVertex3d(v.x, v.y, v.z);
-				v = coordinates.find(b)->second;
-				glVertex3d(v.x, v.y, v.z);
-				v = coordinates.find(c)->second;
-				glVertex3d(v.x, v.y, v.z);
-
-			}
-		}
-	glEnd();*/
-
-	glLoadIdentity();                           // Reset The Current Matrix
-	glTranslatef(xTraslacion,0.0f,-5.0f);                      // Move Into The Screen 5 Units
-
-	glRotatef(xrot,1.0f,0.0f,0.0f);                     // Rotate On The X Axis
-	glRotatef(yrot,0.0f,1.0f,0.0f);                     // Rotate On The Y Axis
-	glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
+	//if (move){
+		glRotatef(xrot,1.0f,0.0f,0.0f);                     // Rotate On The X Axis
+		glRotatef(yrot,0.0f,1.0f,0.0f);                     // Rotate On The Y Axis
+		//glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
+	//}else if (desplazar){
+	//	glTranslatef(xTraslacion,0.0f,0.0f);                      // Move Into The Screen 5 Units
+	//}
 
 	glBegin(GL_QUADS);
 	    // Front Face
@@ -370,18 +257,14 @@ void DrawGLScene(){
 
 	//rtri+=0.02f;                     // Increase The Rotation Variable For The Triangle
 	//rquad-=0.015f;                   // Decrease The Rotation Variable For The Quad
-	if (move){
-		xrot+=xspeed;
-		yrot+=yspeed;
-	}
 
-	if (desplazar){
+
+	glutPostRedisplay();
+
+	/*if (desplazar){
 		xTraslacion -= 0.0001f;
 	}
-	tRot += 0.01f;
-
-	// Refresh the other window
-	glutPostRedisplay();
+	tRot += 0.01f;*/
 }
 
 /* The function called whenever a key is pressed. */
@@ -398,7 +281,6 @@ void keyPressed(unsigned char key, int x, int y)
 		/* exit the program...normal termination. */
 		exit(0);
     }else if (key == 'l'){
-    	cout << "Cambiando.." << key << endl;
     	light=!light;               // Toggle Light TRUE/FALSE
     	if (!light)             // If Not Light
     	{
@@ -412,71 +294,165 @@ void keyPressed(unsigned char key, int x, int y)
     	move = !move;
     }else if (key == 't'){
     	desplazar = !desplazar;
+    	desplazarMirror = desplazar;
+    }else if (key == 'd'){
+    	glMatrixMode(GL_PROJECTION);
+    	glLoadIdentity();
+    	glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);
+    }else if (key == 'a'){
+    	glMatrixMode(GL_PROJECTION);
+    	glLoadIdentity();
+		glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f);
+    }else if (key == 's'){
+    	glMatrixMode(GL_PROJECTION);
+    	glLoadIdentity();
+		glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f);
+    }else {
+    	cout << (int)key << endl;
     }
 }
 
-void loadObjects(){
-	ifstream objectFile;
 
-	objectFile.open("cubo.sur");
-	objectFile >> object;
-	objectFile.close();
 
+/* A general OpenGL initialization function.  Sets all of the initial parameters. */
+void InitRight()	        // We call this right after our OpenGL window is created.
+{
+	// Jump To Texture Loading Routine
+	if (!loadGLTextures()){
+		cout << "Textura no cargada " << endl;			// Texture Didn't Load
+	}
+
+	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
+	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
+	glClearColor(0.0f, 0.0f, 0.0f, 0.5f);				// Black Background
+	glClearDepth(1.0f);									// Depth Buffer Setup
+	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
+	glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
+
+	glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);		// Setup The Ambient Light
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);		// Setup The Diffuse Light
+	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
+	glEnable(GL_LIGHT1);
+
+	// Matriz de proyeccion
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// (A) Proyeccion Ortografica
+	//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Central
+	glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
+	//glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
+
+	// (B) Proyeccion Perspectiva (distintos COP)
+
+	// Matriz de transformacion
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+}
+
+/* The main drawing function. */
+void drawRightScene(){
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();									// Reset The View
+
+	if (move){
+		xrot+=xspeed;
+		yrot+=yspeed;
+	}
+
+	//if (move){
+		glRotatef(xrot,1.0f,0.0f,0.0f);                     // Rotate On The X Axis
+		glRotatef(yrot,0.0f,1.0f,0.0f);                     // Rotate On The Y Axis
+		//glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
+	//}else if (desplazar){
+	//	glTranslatef(xTraslacion,0.0f,0.0f);                      // Move Into The Screen 5 Units
+	//}
+
+	glBegin(GL_QUADS);
+	    // Front Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
+	    // Back Face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
+	    // Top Face
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    // Bottom Face
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    // Right face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
+	    // Left Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
+	glEnd();
+
+	// since this is double buffered, swap the buffers to display what just got drawn.
+	glutSwapBuffers();
+
+	glutPostRedisplay();
 }
 
 int main(int argc, char **argv) {
 
-	loadObjects();
-	srand(time(NULL));
+	// Initialize GLUT state
+	glutInit(&argc, argv);
 
-  /* Initialize GLUT state - glut will take any command line arguments that pertain to it or
-     X Windows - look at its documentation at http://reality.sgi.com/mjk/spec3/spec3.html */
-  glutInit(&argc, argv);
-
-  /* Select type of Display mode:
+	/* Select type of Display mode:
      Double buffer
      RGBA color
      Alpha components supported
      Depth buffer */
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 
-  /* get a 640 x 480 window */
-  glutInitWindowSize(400, 400);
+	// ------------------------ LEFT WINDOW ------------------------- //
 
-  /* the window starts at the upper left corner of the screen */
-  glutInitWindowPosition(0, 0);
-  window = glutCreateWindow("OpenGL Test");
+	glutInitWindowSize(400, 400);
+	glutInitWindowPosition(0, 0);
+	window = glutCreateWindow("Viewer Test 1");
 
-  /* Register the function to do all our OpenGL drawing. */
-  glutDisplayFunc(&DrawGLScene);
+	glutDisplayFunc(&drawGLScene);
+	glutIdleFunc(&drawGLScene);
+	//glutFullScreen();
+	//glutReshapeFunc(&resizeGLScene);
+	glutKeyboardFunc(&keyPressed);
 
-  /* Go fullscreen.  This is as soon as possible. */
-  //glutFullScreen();
+	InitGL();
 
-  /* Register the function called when our window is resized. */
-  glutReshapeFunc(&ReSizeGLScene);
+	// ------------------------ RIGHT WINDOW ------------------------- //
 
-  /* Register the function called when the keyboard is pressed. */
-  glutKeyboardFunc(&keyPressed);
+	glutInitWindowSize(400, 400);
+	glutInitWindowPosition(400, 0);
+	window = glutCreateWindow("Viewer Test 2");
 
-  /* Initialize our window. */
-  InitGL(640, 480);
+	glutDisplayFunc(&drawRightScene);
+	glutIdleFunc(&drawRightScene);
+	//glutFullScreen();
+	//glutReshapeFunc(&resizeGLScene);
+	glutKeyboardFunc(&keyPressed);
 
-  glutInitWindowPosition(400,0);
-  mirror = glutCreateWindow("Mirror Window");
+	InitRight();
 
-  glutDisplayFunc(&DrawGLScene);
-  //glutFullScreen();
-  glutReshapeFunc(&ReSizeGLScene);
-  glutKeyboardFunc(&keyPressed);
-  InitGL(640, 480);
+	glutMainLoop();
 
-  /* Even if there are no events, redraw our gl scene. */
-  glutIdleFunc(&DrawGLScene);
-
-  /* Start Event Processing Engine */
-  glutMainLoop();
-
-  return 1;
+	return 1;
 }
 
