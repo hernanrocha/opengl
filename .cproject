@@ -38,6 +38,10 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="opengl32"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="glu32"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="freeglut"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="ws2_32"/>
+								</option>
+								<option id="gnu.cpp.link.option.paths.693412352" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/opengltest/lib}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1724945473" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
