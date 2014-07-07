@@ -20,6 +20,9 @@
 
 /* ascii code for the escape key */
 #define ESCAPE 27
+#define WIDTH 400
+#define HEIGHT 400
+#define SCREEN_WIDTH 400
 
 bool        keys[256];             // Array Used For The Keyboard Routine
 bool        active=TRUE;           // Window Active Flag
@@ -65,6 +68,7 @@ GLfloat	z=0.0f;				// Depth Into The Screen
 
 Object3D object;
 
+
 using namespace std;
 
 /* The number of our GLUT window */
@@ -103,7 +107,7 @@ int loadGLTextures()									// Load Bitmaps And Convert To Textures
 	// Load The Bitmap, Check For Errors, If Bitmap's Not Found Quit
 	if (TextureImage[0]= loadBMP("Data/Crate.bmp"))
 	{
-		cout << "Cargar texturas" << endl;
+		//cout << "Cargar texturas" << endl;
 
 		Status=TRUE;									// Set The Status To TRUE
 
@@ -170,9 +174,26 @@ void InitGL()	        // We call this right after our OpenGL window is created.
 	// (A) Proyeccion Ortografica
 	//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Central
 	//glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
-	glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
+	//glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
 
 	// (B) Proyeccion Perspectiva (distintos COP)
+	// Perspectiva: FOV = 45º, Cuadrado, Desde 0.1f a 100.0f
+	// Camara: desde el punto (-1,6568, 0, 5) mirando al frente
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(-1.6568f, 0.0f, 5.0f, -1.6568f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP / 4
+
+	// (C) Proyeccion Perspectiva (mismo COP)
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(0.0f, 0.0f, 5.0f, -0.4142f, 0.0f, 4.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+
+	// (D) Proyeccion Dos pantallas
+	//gluPerspective(90.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(0.0f, 0.0f, 3.0f, -1.0f, 0.0f, 2.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+
+	// (E) Proyeccion Perspectiva (mismo COP)
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	glFrustum(-2.0f, 0.0f, -1.0f, 1.0f, 2.0f, 50.0f);
+	gluLookAt(-2.0f, 0.0f, 8.0f, 0.0f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
 
 	// Matriz de transformacion
 	glMatrixMode(GL_MODELVIEW);
@@ -205,6 +226,7 @@ void drawGLScene(){
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();									// Reset The View
+	glTranslatef(-3.0f, 0.0f, 1.0f);
 
 	if (move){
 		xrot+=xspeed;
@@ -312,8 +334,6 @@ void keyPressed(unsigned char key, int x, int y)
     }
 }
 
-
-
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitRight()	        // We call this right after our OpenGL window is created.
 {
@@ -341,74 +361,31 @@ void InitRight()	        // We call this right after our OpenGL window is create
 
 	// (A) Proyeccion Ortografica
 	//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Central
-	glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
+	//glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
 	//glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
 
 	// (B) Proyeccion Perspectiva (distintos COP)
+	// Perspectiva: FOV = 45º, Cuadrado, Desde 0.1f a 100.0f
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(1.6568f, 0.0f, 5.0f, 1.6568f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f);
+
+	// (C) Proyeccion Perspectiva (mismo COP)
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(0.0f, 0.0f, 5.0f, 0.4142f, 0.0f, 4.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+
+	// (D) Proyeccion Dos pantallas
+	//gluPerspective(90.0f, 1.0f, 0.1f, 100.0f);
+	//gluLookAt(0.0f, 0.0f, 3.0f, 1.0f, 0.0f, 2.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+
+	// (E) Proyeccion Perspectiva (mismo COP)
+	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
+	glFrustum(0.0f, 2.0f, -1.0f, 1.0f, 2.0f, 50.0f);
+	gluLookAt(-2.0f, 0.0f, 8.0f, 0.0f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
 
 	// Matriz de transformacion
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-}
-
-/* The main drawing function. */
-void drawRightScene(){
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();									// Reset The View
-
-	if (move){
-		xrot+=xspeed;
-		yrot+=yspeed;
-	}
-
-	//if (move){
-		glRotatef(xrot,1.0f,0.0f,0.0f);                     // Rotate On The X Axis
-		glRotatef(yrot,0.0f,1.0f,0.0f);                     // Rotate On The Y Axis
-		//glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
-	//}else if (desplazar){
-	//	glTranslatef(xTraslacion,0.0f,0.0f);                      // Move Into The Screen 5 Units
-	//}
-
-	glBegin(GL_QUADS);
-	    // Front Face
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
-	    // Back Face
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
-	    // Top Face
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
-	    // Bottom Face
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Top Right Of The Texture and Quad
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Top Left Of The Texture and Quad
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
-	    // Right face
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);  // Bottom Right Of The Texture and Quad
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);  // Top Right Of The Texture and Quad
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);  // Top Left Of The Texture and Quad
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
-	    // Left Face
-	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);  // Bottom Left Of The Texture and Quad
-	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
-	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
-	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
-	glEnd();
-
-	// since this is double buffered, swap the buffers to display what just got drawn.
-	glutSwapBuffers();
-
-	glutPostRedisplay();
 }
 
 int main(int argc, char **argv) {
@@ -425,8 +402,8 @@ int main(int argc, char **argv) {
 
 	// ------------------------ LEFT WINDOW ------------------------- //
 
-	glutInitWindowSize(400, 400);
-	glutInitWindowPosition(0, 0);
+	glutInitWindowSize(WIDTH, HEIGHT);
+	glutInitWindowPosition((SCREEN_WIDTH-WIDTH), 0);
 	window = glutCreateWindow("Viewer Test 1");
 
 	glutDisplayFunc(&drawGLScene);
@@ -439,12 +416,12 @@ int main(int argc, char **argv) {
 
 	// ------------------------ RIGHT WINDOW ------------------------- //
 
-	glutInitWindowSize(400, 400);
-	glutInitWindowPosition(400, 0);
+	glutInitWindowSize(WIDTH, HEIGHT);
+	glutInitWindowPosition(SCREEN_WIDTH, 0);
 	window = glutCreateWindow("Viewer Test 2");
 
-	glutDisplayFunc(&drawRightScene);
-	glutIdleFunc(&drawRightScene);
+	glutDisplayFunc(&drawGLScene);
+	glutIdleFunc(&drawGLScene);
 	//glutFullScreen();
 	//glutReshapeFunc(&resizeGLScene);
 	glutKeyboardFunc(&keyPressed);
