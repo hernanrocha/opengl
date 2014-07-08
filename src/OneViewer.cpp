@@ -79,7 +79,7 @@ int window;
 
 // SERVER
 #define MAXBUFLEN 512
-#define PORT 9999
+#define PORT 9799
 
 char RecvBuff[MAXBUFLEN];
 
@@ -91,9 +91,13 @@ Viewer viewer;
 #define Z_DESP 0.1
 
 struct Screen {
-	GLfloat left, right;
-	GLfloat bottom, top;
-	GLfloat dist;
+	int id;
+	GLdouble centerX, centerY, centerZ;
+	GLfloat left, right, bottom, top, dist;
+};
+
+struct Monitor {
+	int x, y, w, h;
 };
 
 AUX_RGBImageRec * loadBMP(char *Filename)                    // Loads A Bitmap Image
@@ -211,14 +215,20 @@ void resizeGLScene(int Width, int Height)
 }
 
 /* The main drawing function. */
-void drawGLScene(){
+void drawGLScene(int id){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();									// Reset The View
-	gluLookAt(viewer.x, viewer.y, viewer.z, viewer.x, viewer.y, (viewer.z - 5.0f), 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
 
-	//glTranslatef(-3.0f, 0.0f, 1.0f);
+	if(id == 3){
+		// SCREEN 3
+		gluLookAt(viewer.x, viewer.y, viewer.z, (viewer.x - 5.0f), viewer.y, viewer.z, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+		//glTranslatef(-3.0f, 0.0f, 1.0f);
+	}else{
+		// SCREEN 1-2
+		gluLookAt(viewer.x, viewer.y, viewer.z, viewer.x, viewer.y, (viewer.z - 5.0f), 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
+	}
 
 	if (move){
 		xrot+=xspeed;
@@ -385,15 +395,30 @@ void InitRight()	        // We call this right after our OpenGL window is create
 
 }
 
-void initScreen(Screen scr, int x, int y, int w, int h){
+void initScreen(Screen scr, Monitor mon){
 	// ------------------------ LEFT WINDOW ------------------------- //
 
-	glutInitWindowPosition(x, y);
-	glutInitWindowSize(w, h);
+	glutInitWindowPosition(mon.x, mon.y);
+	glutInitWindowSize(mon.w, mon.h);
 	window = glutCreateWindow("Viewer Test 1");
 
-	glutDisplayFunc(&drawGLScene);
-	glutIdleFunc(&drawGLScene);
+	//glutDisplayFunc(&drawGLScene);
+	//glutIdleFunc(&drawGLScene);
+	if (scr.id == 3){
+		glutDisplayFunc([](){
+			drawGLScene(3);
+		});
+		glutIdleFunc([](){
+			drawGLScene(3);
+		});
+	}else{
+		glutDisplayFunc([](){
+			drawGLScene(1);
+		});
+		glutIdleFunc([](){
+			drawGLScene(1);
+		});
+	}
 	glutReshapeFunc(&resizeGLScene);
 	glutFullScreen();
 	glutKeyboardFunc(&keyPressed);
@@ -417,8 +442,8 @@ void initScreen(Screen scr, int x, int y, int w, int h){
 
 }
 
-int main(int argc, char **argv) {
-	/*
+int initServidor(){
+
 	WSADATA wsaData;
 	SOCKET conn_socket,comm_socket;
 	SOCKET comunicacion;
@@ -468,7 +493,6 @@ int main(int argc, char **argv) {
 	server.sin_addr.s_addr=INADDR_ANY; //
 	server.sin_addr.s_addr = inet_addr (localIP);
 	server.sin_port = htons(PORT);
-	//server.
 	bind(conn_socket,(SOCKADDR*)&server,sizeof(server));
 
 	// Abrir Servidor
@@ -479,29 +503,36 @@ int main(int argc, char **argv) {
 	int len = sizeof(struct sockaddr);
 	comm_socket = accept(conn_socket,(sockaddr*)&client,&len);
 
-	int i;
-	char buffer[1025];
-	i= recv(comm_socket,buffer,1024,0);
+	while (true){
+		// Recibir informacion
+		int i;
+		char buffer[1025];
+		i= recv(comm_socket,buffer,1024,0);
 
-	char bufferSalida[] = "Hola, foro.elhacker.net!";
-	int enviado=0;
-	enviado=send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+		// Enviar contestacion
+		char bufferSalida[] = "Hola, Saludos!";
+		int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
 
-	// Se visualiza lo recibido
-	RecvBuff[resp] = '\0';
-	printf("Paquete proveniente de: %s\n",inet_ntoa(client.sin_addr));
-	printf("Longitud del paquete en bytes: %d\n",resp);
-	printf("El paquete contiene:\n\n%s\n",RecvBuff);
+		// Se visualiza lo recibido
+		//RecvBuff[resp] = '\0';
+		cout << "Paquete proveniente de: " << inet_ntoa(client.sin_addr) << endl;
+		cout << "Longitud del paquete en bytes: " << i << "..." << endl;
+		cout << "El paquete contiene: " << buffer << endl;
 
-	getchar();
+		getchar();
+	}
+
 	// Cerramos el socket de comunicacion
 	closesocket(conn_socket);
 
-	*/
+	return 0;
+
+}
+
+int main(int argc, char **argv) {
+	//int serv = initServidor();
 
 	// CLIENTE
-
-
 	/*client.sin_family = AF_INET;
 	client.sin_port = htons(PORT);
 	client.sin_addr = *((struct in_addr*)hp->h_addr);
@@ -525,10 +556,17 @@ int main(int argc, char **argv) {
 	// Viewer
 	viewer.x = 0.0f;
 	viewer.y = 0.0f;
-	viewer.z = -8.0f;
+	viewer.z = 8.0f;
 
 	// Screen 1
+	// ID: 1
+	// Centro: (0,0,-5)
+	// AnchoReal(en dm): (-3,316, 0)
 	Screen scr1;
+	scr1.id = 1;
+	scr1.centerX = 0.0f;
+	scr1.centerY = 0.0f;
+	scr1.centerZ = -5.0f;
 	scr1.left = -3.316f;
 	scr1.right = 0.0f;
 	scr1.bottom = -0.9321f;
@@ -537,14 +575,32 @@ int main(int argc, char **argv) {
 
 	// Screen 2
 	Screen scr2;
+	scr2.id = 2;
 	scr2.left = 0.0f;
 	scr2.right = 3.316f;
 	scr2.bottom = -0.2321f;
 	scr2.top = 1.6321f;
 	scr2.dist = 5.0f;
 
-	initScreen(scr1, 0, 0, WIDTH, HEIGHT);
-	initScreen(scr2, SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT);
+	// Screen 3
+	Screen scr3;
+	scr3.id = 3;
+	scr3.left = 1.35f;
+	scr3.right = 5.0f;
+	scr3.bottom = -0.9321f;
+	scr3.top = 0.9321f;
+	scr3.dist = 3.316f;
+
+	// Monitor 1
+	Monitor mon1;
+	mon1.x = 0;
+	mon1.y = 0;
+	mon1.w = WIDTH;
+	mon1.h = HEIGHT;
+
+	initScreen(scr1, mon1);
+	//initScreen(scr2, SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT);
+	//initScreen(scr3, SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT);
 
 	// ------------------------ RIGHT WINDOW ------------------------- //
 
