@@ -17,15 +17,15 @@
 #include <stdio.h>
 #include <windows.h>
 #include <winsock.h>
+#include <math.h>
+#include <string>
 
 #include "Object3D.h"
+#include "Client.h"
 
+//#include "boost/thread/thread.hpp"
 
 /* ascii code for the escape key */
-#define ESCAPE 27
-#define WIDTH 1366
-#define HEIGHT 768
-#define SCREEN_WIDTH 1366
 
 bool        keys[256];             // Array Used For The Keyboard Routine
 bool        active=TRUE;           // Window Active Flag
@@ -51,15 +51,15 @@ GLfloat xTraslacion = 0.0001f;
 BOOL    desplazarMirror = false;
 GLfloat xMirror = 0;
 
-GLfloat LightAmbient[] = { 1.0f, 0.5f, 0.5f, 1.0f };				// Ambient Light Values
-
-GLfloat LightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };  				// Diffuse Light Values
-GLfloat LightPosition[] = { 0.0f, 0.0f, 10.0f, 1.0f };				// Light Position
+GLfloat LightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.0f };				// Ambient Light Values
+GLfloat LightDiffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };  				// Diffuse Light Values
+GLfloat LightEmission[] = { 0.0f, 0.0f, 0.0f, 1.0f };				// Emission Light Values
+GLfloat LightSpecular[] = { 0.0f, 0.0f, 0.0f, 1.0f };				// Specular Light Values
+GLfloat LightPosition[] = { 10.0f, 10.0f, 10.0f, 1.0f };			// Light Position
 
 GLuint  filter;                                 // Which Filter To Use
 GLuint  texture[3];                             // Storage for 3 textures
 
-const float piover180 = 0.0174532925f;
 float heading;
 float xpos;
 float zpos;
@@ -77,124 +77,24 @@ using namespace std;
 /* The number of our GLUT window */
 int window;
 
-// SERVER
-#define MAXBUFLEN 512
-#define PORT 9799
 
-char RecvBuff[MAXBUFLEN];
+#include "Graphics.h"
 
-struct Viewer {
-	GLfloat x, y, z;
-};
-Viewer viewer;
-#define X_DESP 0.1
-#define Z_DESP 0.1
+//Viewer viewer;
+//map<int, Screen> screens;
 
-struct Screen {
-	int id;
-	GLdouble centerX, centerY, centerZ;
-	GLfloat left, right, bottom, top, dist;
-};
+//Client client;
 
-struct Monitor {
-	int x, y, w, h;
-};
+// ------------------------ OBJ FILE ------------------------- //
+#define FILE_NAME  "foot.obj"							// This is the 3D file we will load.
+#define MAX_TEXTURES 100								// The maximum amount of textures to load
+#include "Obj.h"
+UINT g_Texture[MAX_TEXTURES] = {0};						// This holds the texture info, referenced by an ID
 
-AUX_RGBImageRec * loadBMP(char *Filename)                    // Loads A Bitmap Image
-{
-	FILE *File=NULL;                            // File Handle
+/*void publishAction(int action){
+	processAction(action);
 
-	if (!Filename)                              // Make Sure A Filename Was Given
-	{
-		return NULL;                            // If Not Return NULL
-	}
-
-	File=fopen(Filename,"r");                       // Check To See If The File Exists
-
-	if (File)                               // Does The File Exist?
-	{
-		fclose(File);                           // Close The Handle
-		return auxDIBImageLoad(Filename);               // Load The Bitmap And Return A Pointer
-	}else{
-		cout << "No encontrado " << endl;
-	}
-	return NULL;                                // If Load Failed Return NULL
-}
-
-
-int loadGLTextures()									// Load Bitmaps And Convert To Textures
-{
-	int Status=FALSE;									// Status Indicator
-
-	AUX_RGBImageRec *TextureImage[1];					// Create Storage Space For The Texture
-
-	memset(TextureImage,0,sizeof(void *)*1);           	// Set The Pointer To NULL
-
-	// Load The Bitmap, Check For Errors, If Bitmap's Not Found Quit
-	if (TextureImage[0]= loadBMP("Data/Crate.bmp"))
-	{
-		//cout << "Cargar texturas" << endl;
-
-		Status=TRUE;									// Set The Status To TRUE
-
-		glGenTextures(3, &texture[0]);					// Create Three Textures
-
-		// Create Nearest Filtered Texture
-		glBindTexture(GL_TEXTURE_2D, texture[0]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-
-		// Create Linear Filtered Texture
-		glBindTexture(GL_TEXTURE_2D, texture[1]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-
-		// Create MipMapped Texture
-		glBindTexture(GL_TEXTURE_2D, texture[2]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
-		gluBuild2DMipmaps(GL_TEXTURE_2D, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-	}
-
-	if (TextureImage[0])								// If Texture Exists
-	{
-
-		if (TextureImage[0]->data)						// If Texture Image Exists
-		{
-			free(TextureImage[0]->data);// Free The Texture Image Memory will not compile in dev
-		}
-
-		free(TextureImage[0]);							// Free The Image Structure
-	}
-
-	return Status;										// Return The Status
-}
-
-/* A general OpenGL initialization function.  Sets all of the initial parameters. */
-void InitGL()	        // We call this right after our OpenGL window is created.
-{
-	// Jump To Texture Loading Routine
-	if (!loadGLTextures()){
-		cout << "Textura no cargada " << endl;			// Texture Didn't Load
-	}
-
-	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
-	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
-	glClearColor(0.0f, 0.0f, 0.0f, 0.5f);				// Black Background
-	glClearDepth(1.0f);									// Depth Buffer Setup
-	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
-	glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
-
-	// Luces
-	glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);		// Setup The Ambient Light
-	glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);		// Setup The Diffuse Light
-	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
-	glEnable(GL_LIGHT1);
-
-}
+}*/
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
 void resizeGLScene(int Width, int Height)
@@ -214,21 +114,65 @@ void resizeGLScene(int Width, int Height)
 	cout << Width << " x " << Height << endl;
 }
 
+/*void drawSnowMan() {
+
+	glColor3f(1.0f, 1.0f, 1.0f);
+
+// Draw Body
+	glTranslatef(0.0f ,0.75f, 0.0f);
+	glutSolidSphere(0.75f,20,20);
+
+// Draw Head
+	glTranslatef(0.0f, 1.0f, 0.0f);
+	glutSolidSphere(0.25f,20,20);
+
+// Draw Eyes
+	glPushMatrix();
+	glColor3f(0.0f,0.0f,0.0f);
+	glTranslatef(0.05f, 0.10f, 0.18f);
+	glutSolidSphere(0.05f,10,10);
+	glTranslatef(-0.1f, 0.0f, 0.0f);
+	glutSolidSphere(0.05f,10,10);
+	glPopMatrix();
+
+// Draw Nose
+	glColor3f(1.0f, 0.5f , 0.5f);
+	glutSolidCone(0.08f,0.5f,10,2);
+}
+
+void snowTest(){
+	// Draw ground
+	glColor3f(0.0f, 0.9f, 0.9f);
+	glBegin(GL_QUADS);
+	glVertex3f(-100.0f, 0.0f, -100.0f);
+	glVertex3f(-100.0f, 0.0f,  100.0f);
+	glVertex3f( 100.0f, 0.0f,  100.0f);
+	glVertex3f( 100.0f, 0.0f, -100.0f);
+	glEnd();
+
+	// Draw 36 SnowMen
+	for(int i = -3; i < 3; i++)
+		for(int j=-3; j < 3; j++) {
+			glPushMatrix();
+			glTranslatef(i*10.0,0,j * 10.0);
+			drawSnowMan();
+			glPopMatrix();
+		}
+}*/
+
 /* The main drawing function. */
-void drawGLScene(int id){
+/*void drawGLScene(int windowID){
+	Screen scr = screens[windowID];
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();									// Reset The View
-
-	if(id == 3){
-		// SCREEN 3
-		gluLookAt(viewer.x, viewer.y, viewer.z, (viewer.x - 5.0f), viewer.y, viewer.z, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
-		//glTranslatef(-3.0f, 0.0f, 1.0f);
-	}else{
-		// SCREEN 1-2
-		gluLookAt(viewer.x, viewer.y, viewer.z, viewer.x, viewer.y, (viewer.z - 5.0f), 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
-	}
+	//viewer.yAngle += 0.01;
+	glRotatef(-viewer.yAngle, 0.0f, 1.0f, 0.0f);
+	gluLookAt(viewer.x, viewer.y + 1, viewer.z,
+			(viewer.x + scr.centerX), (viewer.y + 1 + scr.centerY), (viewer.z + scr.centerZ),
+			0.0f, 1.0f, 0.0f);
 
 	if (move){
 		xrot+=xspeed;
@@ -241,9 +185,9 @@ void drawGLScene(int id){
 	//glRotatef(zrot,0.0f,0.0f,1.0f);                     // Rotate On The Z Axis
 	//}else if (desplazar){
 	//	glTranslatef(xTraslacion,0.0f,0.0f);                      // Move Into The Screen 5 Units
-	//}
+	//}*/
 
-	glBegin(GL_QUADS);
+	/*glBegin(GL_QUADS);
 	// Front Face
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Left Of The Texture and Quad
 	glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
@@ -274,35 +218,35 @@ void drawGLScene(int id){
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);  // Bottom Right Of The Texture and Quad
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);  // Top Right Of The Texture and Quad
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);  // Top Left Of The Texture and Quad
-	glEnd();
+	glEnd();*/
+
+	//snowTest();
 
 	// since this is double buffered, swap the buffers to display what just got drawn.
-	glutSwapBuffers();
+	//glutSwapBuffers();
 
 	//rtri+=0.02f;                     // Increase The Rotation Variable For The Triangle
 	//rquad-=0.015f;                   // Decrease The Rotation Variable For The Quad
 
 
-	glutPostRedisplay();
+	//glutPostRedisplay();
 
 	/*if (desplazar){
 		xTraslacion -= 0.0001f;
 	}
 	tRot += 0.01f;*/
-}
+//}
 
 /* The function called whenever a key is pressed. */
-void keyPressed(unsigned char key, int x, int y)
+/*void keyPressed(unsigned char key, int x, int y)
 {
-	/* avoid thrashing this procedure */
+	// avoid thrashing this procedure
 	usleep(100);
 
-	/* If escape is pressed, kill everything. */
+	// If escape is pressed, kill everything.
 	if (key == ESCAPE){
-		/* shut down our window */
-		glutDestroyWindow(window);
-
-		/* exit the program...normal termination. */
+		// shut down our window
+		glutDestroyWindow(glutGetWindow());
 		exit(0);
 	}else if (key == 'l'){
 		light=!light;               // Toggle Light TRUE/FALSE
@@ -319,111 +263,68 @@ void keyPressed(unsigned char key, int x, int y)
 	}else if (key == 't'){
 		desplazar = !desplazar;
 		desplazarMirror = desplazar;
-	}else if (key == 'd'){
-		//glMatrixMode(GL_PROJECTION);
-		//glLoadIdentity();
-		//glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);
-		viewer.x += X_DESP;
-	}else if (key == 'a'){
-		//glMatrixMode(GL_PROJECTION);
-		//glLoadIdentity();
-		//glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f);
-		viewer.x -= X_DESP;
-	}else if (key == 's'){
-		//glMatrixMode(GL_PROJECTION);
-		//glLoadIdentity();
-		//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f);
-		viewer.z += Z_DESP;
-	}else if (key == 'w'){
-		viewer.z -= Z_DESP;
+	}else if (key == MOVE_RIGHT){
+		//viewer.x += X_DESP * cos(degToRad(viewer.yAngle));
+		//viewer.z -= X_DESP * sin(degToRad(viewer.yAngle));
+		publishAction(ACTION_MOVE_RIGHT);
+	}else if (key == MOVE_LEFT){
+		//viewer.x -= X_DESP * cos(degToRad(viewer.yAngle));
+		//viewer.z += X_DESP * sin(degToRad(viewer.yAngle));
+		publishAction(ACTION_MOVE_LEFT);
+	}else if (key == MOVE_DOWN){
+		//viewer.x += Z_DESP * sin(degToRad(viewer.yAngle));
+		//viewer.z += Z_DESP * cos(degToRad(viewer.yAngle));
+		publishAction(ACTION_MOVE_DOWN);
+	}else if (key == MOVE_UP){
+		//viewer.x -= Z_DESP * sin(degToRad(viewer.yAngle));
+		//viewer.z -= Z_DESP * cos(degToRad(viewer.yAngle));
+		publishAction(ACTION_MOVE_UP);
 	}else {
 		cout << (int)key << endl;
 	}
-}
+}*/
 
-/* A general OpenGL initialization function.  Sets all of the initial parameters. */
-void InitRight()	        // We call this right after our OpenGL window is created.
-{
-	// Jump To Texture Loading Routine
-	if (!loadGLTextures()){
-		cout << "Textura no cargada " << endl;			// Texture Didn't Load
+/*void keySpecialPressed(int key, int x, int y){
+	switch(key) {
+	case ROTATE_LEFT:
+		//viewer.yAngle += 1.0;
+		publishAction(ACTION_ROTATE_LEFT);
+		break;
+	case ROTATE_RIGHT:
+		//viewer.yAngle -= 1.0;
+		publishAction(ACTION_ROTATE_RIGHT);
+		break;
 	}
+}*/
 
-	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
-	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
-	glClearColor(0.0f, 0.0f, 0.0f, 0.5f);				// Black Background
-	glClearDepth(1.0f);									// Depth Buffer Setup
-	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
-	glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
 
-	glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);		// Setup The Ambient Light
-	glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);		// Setup The Diffuse Light
-	glLightfv(GL_LIGHT1, GL_POSITION,LightPosition);	// Position The Light
-	glEnable(GL_LIGHT1);
 
-	// Matriz de proyeccion
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+/*void initScreen(Screen scr){
 
-	// (A) Proyeccion Ortografica
-	//glOrtho(-2.0f, 2.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Central
-	//glOrtho(0.0f, 4.0f, -2.0f, 2.0f, -5.0f, 5.0f);	// Camara Derecha
-	//glOrtho(-4.0f, 0.0f, -2.0f, 2.0f, -5.0f, 5.0f); // Camara Izquierda
-
-	// (B) Proyeccion Perspectiva (distintos COP)
-	// Perspectiva: FOV = 45º, Cuadrado, Desde 0.1f a 100.0f
-	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
-	//gluLookAt(1.6568f, 0.0f, 5.0f, 1.6568f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f);
-
-	// (C) Proyeccion Perspectiva (mismo COP)
-	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
-	//gluLookAt(0.0f, 0.0f, 5.0f, 0.4142f, 0.0f, 4.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
-
-	// (D) Proyeccion Dos pantallas
-	//gluPerspective(90.0f, 1.0f, 0.1f, 100.0f);
-	//gluLookAt(0.0f, 0.0f, 3.0f, 1.0f, 0.0f, 2.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
-
-	// (E) Proyeccion Perspectiva (mismo COP)
-	//gluPerspective(45.0f, 1.0f, 0.1f, 100.0f);
-	glFrustum(0.0f, 2.0f, -1.0f, 1.0f, 2.0f, 50.0f);
-	gluLookAt(-2.0f, 0.0f, 8.0f, 0.0f, 0.0f, 3.0f, 0.0f, 1.0f, 0.0f); // Tg(22.5º) = OP
-
-	// Matriz de transformacion
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-}
-
-void initScreen(Screen scr, Monitor mon){
-	// ------------------------ LEFT WINDOW ------------------------- //
-
+	Monitor mon = scr.mon;
 	glutInitWindowPosition(mon.x, mon.y);
 	glutInitWindowSize(mon.w, mon.h);
 	window = glutCreateWindow("Viewer Test 1");
 
-	//glutDisplayFunc(&drawGLScene);
-	//glutIdleFunc(&drawGLScene);
-	if (scr.id == 3){
-		glutDisplayFunc([](){
-			drawGLScene(3);
-		});
-		glutIdleFunc([](){
-			drawGLScene(3);
-		});
-	}else{
-		glutDisplayFunc([](){
-			drawGLScene(1);
-		});
-		glutIdleFunc([](){
-			drawGLScene(1);
-		});
-	}
+	screens[glutGetWindow()] = scr;
+	cout << "Asociado Window " << glutGetWindow() << " con Screen " << scr.id << endl;
+
+	glutDisplayFunc([](){
+		drawGLScene(glutGetWindow());
+	});
+	glutIdleFunc([](){
+		drawGLScene(glutGetWindow());
+	});
 	glutReshapeFunc(&resizeGLScene);
 	glutFullScreen();
+
+	// Suscripcion de teclas (SERVER)
 	glutKeyboardFunc(&keyPressed);
+	glutSpecialFunc(&keySpecialPressed);
 
 	InitGL();
+
+	glViewport(0, 0, scr.mon.w, scr.mon.h);
 
 	// Matriz de proyeccion
 	glMatrixMode(GL_PROJECTION);
@@ -440,9 +341,9 @@ void initScreen(Screen scr, Monitor mon){
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-}
+}*/
 
-int initServidor(){
+/*int initServidor(){
 
 	WSADATA wsaData;
 	SOCKET conn_socket,comm_socket;
@@ -527,10 +428,94 @@ int initServidor(){
 
 	return 0;
 
+}*/
+
+void CreateTexture(UINT textureArray[], LPSTR strFileName, int textureID)
+{
+	AUX_RGBImageRec *pBitmap = NULL;
+
+	if(!strFileName)									// Return from the function if no file name was passed in
+		return;
+
+	pBitmap = auxDIBImageLoad(strFileName);				// Load the bitmap and store the data
+
+	if(pBitmap == NULL)									// If we can't load the file, quit!
+		exit(0);
+
+	// Generate a texture with the associative texture ID stored in the array
+	glGenTextures(1, &textureArray[textureID]);
+
+	// This sets the alignment requirements for the start of each pixel row in memory.
+	glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
+
+	// Bind the texture to the texture arrays index and init the texture
+	glBindTexture(GL_TEXTURE_2D, textureArray[textureID]);
+
+	// Build Mipmaps (builds different versions of the picture for distances - looks better)
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 3, pBitmap->sizeX, pBitmap->sizeY, GL_RGB, GL_UNSIGNED_BYTE, pBitmap->data);
+
+	// Lastly, we need to tell OpenGL the quality of our texture map.  GL_LINEAR_MIPMAP_LINEAR
+	// is the smoothest.  GL_LINEAR_MIPMAP_NEAREST is faster than GL_LINEAR_MIPMAP_LINEAR,
+	// but looks blochy and pixilated.  Good for slower computers though.
+
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+
+	// Now we need to free the bitmap data that we loaded since openGL stored it as a texture
+
+	if (pBitmap)										// If we loaded the bitmap
+	{
+		if (pBitmap->data)								// If there is texture data
+		{
+			free(pBitmap->data);						// Free the texture data, we don't need it anymore
+		}
+
+		free(pBitmap);									// Free the bitmap structure
+	}
+}
+
+void objTest(){
+	CLoadObj g_LoadObj;										// This is OBJ class.  This should go in a good model class.
+	t3DModel g_3DModel;
+
+	g_LoadObj.ImportObj(&g_3DModel, FILE_NAME);			// Load our .Obj file into our model structure
+	g_LoadObj.AddMaterial(&g_3DModel, "Bone", "Bone.bmp", 255, 255, 255); //
+	g_LoadObj.SetObjectMaterial(&g_3DModel, 0, 0);
+	for(int i = 0; i < g_3DModel.numOfMaterials; i++){
+		// Check if the current material has a file name
+		if(strlen(g_3DModel.pMaterials[i].strFile) > 0) {
+			// Create a texture map from the material's file name
+			CreateTexture(g_Texture, g_3DModel.pMaterials[i].strFile, i);
+		}
+
+		// Assign the material ID to the current material
+		g_3DModel.pMaterials[i].texureId = i;
+	}
+
+	glEnable(GL_LIGHT0);								// Turn on a light with defaults set
+	glEnable(GL_LIGHTING);								// Turn on lighting
+	glEnable(GL_COLOR_MATERIAL);						// Allow color
+}
+
+typedef struct MyData {
+    int val1;
+    int val2;
+} MYDATA, *PMYDATA;
+
+void BounceProc( void *pMyID ){
+	int    *MyID = (int*)pMyID;
+	cout << "Soy un thread " << *MyID << endl;
+	Sleep(5000);
+	cout << "Termine " << endl;
 }
 
 int main(int argc, char **argv) {
 	//int serv = initServidor();
+	//PMYDATA data;
+	//DWORD threadID;
+	//HANDLE thread = CreateThread(NULL, 0, initServidor, data, 0, &threadID);
+
+	//thread thr(initServidor);
 
 	// CLIENTE
 	/*client.sin_family = AF_INET;
@@ -553,68 +538,34 @@ int main(int argc, char **argv) {
      Depth buffer */
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 
-	// Viewer
-	viewer.x = 0.0f;
-	viewer.y = 0.0f;
-	viewer.z = 8.0f;
+	// Viewer (X, Y, Z)
+	setViewer(0.0f, 0.0f, 5.0f);
 
-	// Screen 1
-	// ID: 1
-	// Centro: (0,0,-5)
-	// AnchoReal(en dm): (-3,316, 0)
-	Screen scr1;
-	scr1.id = 1;
-	scr1.centerX = 0.0f;
-	scr1.centerY = 0.0f;
-	scr1.centerZ = -5.0f;
-	scr1.left = -3.316f;
-	scr1.right = 0.0f;
-	scr1.bottom = -0.9321f;
-	scr1.top = 0.9321f;
-	scr1.dist = 5.0f;
+	// Monitores
+	setupMonitor();
 
-	// Screen 2
-	Screen scr2;
-	scr2.id = 2;
-	scr2.left = 0.0f;
-	scr2.right = 3.316f;
-	scr2.bottom = -0.2321f;
-	scr2.top = 1.6321f;
-	scr2.dist = 5.0f;
+	// Pantallas
+	setupScreen();
 
-	// Screen 3
-	Screen scr3;
-	scr3.id = 3;
-	scr3.left = 1.35f;
-	scr3.right = 5.0f;
-	scr3.bottom = -0.9321f;
-	scr3.top = 0.9321f;
-	scr3.dist = 3.316f;
+	//initScreen(scr1);
 
-	// Monitor 1
-	Monitor mon1;
-	mon1.x = 0;
-	mon1.y = 0;
-	mon1.w = WIDTH;
-	mon1.h = HEIGHT;
-
-	initScreen(scr1, mon1);
+	//initScreen(scr2);
+	//initScreen(scr3);
 	//initScreen(scr2, SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT);
-	//initScreen(scr3, SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT);
+	// SCREEN_WIDTH, 0.0f, WIDTH, HEIGHT
 
-	// ------------------------ RIGHT WINDOW ------------------------- //
+	//cout << cos(degToRad(45)) << endl;
+	//cout << cos(degToRad(15)) << endl;
+	//cout << cos(degToRad(90)) << endl;
 
-	/*glutInitWindowSize(WIDTH, HEIGHT);
-	glutInitWindowPosition(SCREEN_WIDTH, 0);
-	window = glutCreateWindow("Viewer Test 2");
+	initScreen(1, true);
 
-	glutDisplayFunc(&drawGLScene);
-	glutIdleFunc(&drawGLScene);
-	//glutReshapeFunc(&resizeGLScene);
-	glutFullScreen();
-	glutKeyboardFunc(&keyPressed);
+	//initServer();
 
-	InitRight();*/
+	// ------------------------ OBJ FILE ------------------------- //
+
+
+	//objTest();
 
 	glutMainLoop();
 

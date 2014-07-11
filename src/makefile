@@ -1,7 +1,7 @@
 INCLUDE = -I/usr/include/
 LIBDIR  = -Llib 
 
-COMPILERFLAGS = -Wall
+COMPILERFLAGS = -Wall -std=c++11
 CC = gcc
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)
 LIBRARIES = -lopengl32 -lglut32 -lglu32

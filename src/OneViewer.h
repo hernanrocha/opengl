@@ -10,12 +10,16 @@
 
 #include <GL/glut.h>    // Header File For The GLUT Library
 #include <GL/GLAux.h>
-#include <unistd.h>     // Header file for sleeping.
 #include <time.h>
 
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <conio.h>
+#include <process.h>
 
 /* ascii code for the escape key */
 #define ESCAPE 27
