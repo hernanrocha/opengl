@@ -18,12 +18,16 @@ map<int, Screen> windows;
 
 // Servidor
 char RecvBuff[MAXBUFLEN];
+SOCKET comm_socket;
 
-/*int initServidor(){
+// Cliente
+SOCKET sock;
+
+void initServidor(void *pMyID){
 
 	WSADATA wsaData;
-	SOCKET conn_socket,comm_socket;
-	SOCKET comunicacion;
+	SOCKET conn_socket;
+	//SOCKET comunicacion;
 	struct sockaddr_in server;
 	struct sockaddr_in client;
 	struct hostent *hp;
@@ -37,7 +41,8 @@ char RecvBuff[MAXBUFLEN];
 	if(resp){
 		printf("Error al inicializar socket\n");
 		getchar();
-		return resp;
+		//return resp;
+		return;
 	}
 
 	// Obtenemos la IP que usará nuestro servidor...
@@ -47,18 +52,16 @@ char RecvBuff[MAXBUFLEN];
 
 	if(!hp){
 		printf("No se ha encontrado servidor...\n");
-		getchar();
 		WSACleanup();
-		return WSAGetLastError();
+		return;
 	}
 
 	// Creamos el socket...
 	conn_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(conn_socket==INVALID_SOCKET) {
 		printf("Error al crear socket\n");
-		getchar();
 		WSACleanup();
-		return WSAGetLastError();
+		return;
 	}else {
 		cout << "Socket creado.. " << endl;
 	}
@@ -67,50 +70,160 @@ char RecvBuff[MAXBUFLEN];
 	localHost = gethostbyname("");
 	localIP = inet_ntoa (*(struct in_addr *)*localHost->h_addr_list);
 	server.sin_family=AF_INET; //
-	server.sin_addr.s_addr=INADDR_ANY; //
-	server.sin_addr.s_addr = inet_addr (localIP);
+	//server.sin_addr.s_addr = INADDR_ANY; //
+	server.sin_addr.s_addr = inet_addr (SERVER_IP);
 	server.sin_port = htons(SERVER_PORT);
 	bind(conn_socket,(SOCKADDR*)&server,sizeof(server));
 
 	// Abrir Servidor
 	listen(conn_socket, 8);
-	cout << "Servidor en escucha " << endl;
-
-	// Esperar cliente
-	int len = sizeof(struct sockaddr);
-	comm_socket = accept(conn_socket,(sockaddr*)&client,&len);
+	cout << "[Server] Servidor en escucha en " << localIP << ":" << SERVER_PORT << endl;
 
 	while (true){
-		// Recibir informacion
-		int i;
-		char buffer[1025];
-		i= recv(comm_socket,buffer,1024,0);
 
-		// Enviar contestacion
-		char bufferSalida[] = "Hola, Saludos!";
-		int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+		// Esperar cliente
+		int len = sizeof(struct sockaddr);
+		//client.sin_family = AF_INET;
+		//client.sin_addr.s_addr = inet_addr (SERVER_IP);
+		memcpy(&server, &client, sizeof(SOCKADDR));
+		comm_socket = accept(conn_socket,(sockaddr*)&client,&len);
 
-		// Se visualiza lo recibido
-		//RecvBuff[resp] = '\0';
-		cout << "Paquete proveniente de: " << inet_ntoa(client.sin_addr) << endl;
-		cout << "Longitud del paquete en bytes: " << i << "..." << endl;
-		cout << "El paquete contiene: " << buffer << endl;
+		//if (comm_socket == INVALID_SOCKET){
+			//printf("accept failed with error code : %d" , WSAGetLastError());
 
-		getchar();
+		//}else {
+			// Recibir informacion
+			int i;
+			char buffer[1025];
+			i= recv(comm_socket,buffer,1024,0);
+
+			cout << "i: " << i << endl;
+
+			// Enviar contestacion
+			char bufferSalida[] = "OK";
+			int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+
+			// Se visualiza lo recibido
+			buffer[i] = '\0';
+			cout << "[Server] Paquete proveniente de: " << inet_ntoa(client.sin_addr) << ":" << ntohs(client.sin_port) << endl;
+			cout << "[Server] Longitud del paquete en bytes: " << i << "..." << endl;
+			cout << "[Server] El paquete contiene: " << buffer << endl;
+			//getchar();
+		//}
 	}
 
 	// Cerramos el socket de comunicacion
 	closesocket(conn_socket);
 
-	return 0;
+	return;
+	//return 0;
 
-}*/
+}
+
+void initCliente(void *pMyID){
+
+	WSADATA wsaData;
+	struct sockaddr_in servidor;
+	struct hostent *hp;
+	int resp,stsize;
+	u_short port;
+
+	//Inicializamos la DLL de sockets
+	resp = WSAStartup(MAKEWORD(2,0),&wsaData);
+	if(resp){
+		printf("Error al inicializar socket\n");
+		getchar();
+		//return resp;
+		return;
+	}
+
+	// Obtenemos la IP que usará nuestro servidor...
+	// en este caso localhost indica nuestra propia máquina...
+	//hp = gethostbyname("localhost");
+	//port = htons(CLIENT_PORT);
+
+	/*if(!hp){
+		printf("No se ha encontrado servidor...\n");
+		getchar();
+		WSACleanup();
+		//return WSAGetLastError();
+		return;
+	}*/
+
+	// Creamos el socket CLIENTE...
+	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if(sock==INVALID_SOCKET) {
+		printf("Error al crear socket\n");
+		getchar();
+		WSACleanup();
+		//return WSAGetLastError();
+		return;
+	}else {
+		cout << "Socket cliente creado.. " << endl;
+	}
+
+	// Configurar servidor
+	servidor.sin_family = AF_INET;
+	servidor.sin_addr.s_addr = inet_addr (SERVER_IP);
+	servidor.sin_port = htons(SERVER_PORT);
+	cout << "[Client] Conectando al servidor en " << inet_ntoa(servidor.sin_addr) << ":" << ntohs(servidor.sin_port) << endl;
+
+	SOCKET j = connect( sock, (sockaddr*)&servidor, sizeof servidor );
+	if ( j == SOCKET_ERROR ){
+	    cout << "No se puede conectar" << endl;
+	    return;
+	}else {
+		cout << "Conectado " << endl;
+		cout << inet_ntoa(servidor.sin_addr) << ":" << ntohs(servidor.sin_port) << endl;
+		//cout << inet_ntoa(cliente.sin_addr) << ":" << ntohs(cliente.sin_port) << endl;
+	}
+
+	// Enviar contestacion
+	char bufferSalida[] = "Hola soy el Cliente, Saludos!";
+	int enviado = send(sock, bufferSalida,strlen(bufferSalida),0);
+	cout << "[Client] Enviados "  << enviado << " bytes."<< endl;
+
+	// Cerramos el socket de comunicacion
+	while(true){
+		// Recibir informacion
+		int i;
+		char buffer[1025];
+		i= recv(sock,buffer,1024,0);
+		buffer[i] = '\0';
+
+		// Se visualiza lo recibido
+		//cout << "Paquete proveniente de: " << inet_ntoa(client.sin_addr) << ":" << ntohs(client.sin_port) << endl;
+		cout << "[Client] Recibidos: " << i << " bytes." << endl;
+		cout << "[Client] El paquete contiene: " << buffer << endl;
+		if (strcmp(buffer, "1") == 0){
+			cout << "Izquierda " << endl;
+			processAction(ACTION_MOVE_LEFT);
+		}else if (strcmp(buffer, "2") == 0){
+			cout << "Derecha " << endl;
+			processAction(ACTION_MOVE_RIGHT);
+		}else{
+			cout << "no se" << endl;
+		}
+	}
+
+	closesocket(sock);
+
+	return;
+
+}
 
 void initServer(){
 	int threadID = 10;
 	cout << "[initServer] Iniciando Thread Server" << endl;
-	//_beginthread(initServidor, 0, &threadID);
+	_beginthread(initServidor, 0, &threadID);
 	cout << "[initServer] Iniciado" << endl;
+}
+
+void initClient(){
+	int threadID = 20;
+	cout << "[initClient] Iniciando Thread Client" << endl;
+	_beginthread(initCliente, 0, &threadID);
+	cout << "[initClient] Iniciado" << endl;
 }
 
 void processAction(int action){
@@ -140,6 +253,9 @@ void processAction(int action){
 	default:
 		break;
 	}
+
+	// Actualizar
+	glutPostRedisplay();
 }
 
 void setViewer(GLfloat x, GLfloat y, GLfloat z){
@@ -179,7 +295,6 @@ void setupScreen(){
 	// Centro: (0, 0, -5)
 	// Dimensiones (en dm): (-3.45; 0) x (-0.975; 0.975)
 	Screen scr1;
-	cout << "salida " << endl;
 	scr1.id = 1;
 	scr1.centerX = 0.0f;
 	scr1.centerY = 0.0f;
@@ -306,7 +421,10 @@ void drawGLScene(int windowID){
 }
 
 void publishAction(int action){
-	processAction(action);
+	//processAction(action);
+	char bufferSalida[] = "2";
+	send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+	//send(comm_socket,bufferSalida,strlen(bufferSalida), MSG_OOB);
 
 }
 

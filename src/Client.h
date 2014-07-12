@@ -14,7 +14,6 @@
 #include <map>
 #include <stdio.h>
 #include <unistd.h>     // Header file for sleeping.
-//#include <winsock.h>    // Soporte a Sockets
 //#include <windows.h>
 #include <process.h>
 //#include <conio.h>
@@ -40,7 +39,11 @@
 
 // Server
 #define MAXBUFLEN 512
+#define SERVER_IP "192.168.1.33"
 #define SERVER_PORT 9999
+
+// Client
+#define CLIENT_PORT 10000
 
 // Desplazamiento
 #define X_DESP 0.5
@@ -66,6 +69,8 @@ struct Screen {
 	Monitor mon;
 };
 
+#include <winsock.h>    // Soporte a Sockets
+
 using namespace std;
 
 //class Client {
@@ -89,6 +94,7 @@ void keyPressed(unsigned char key, int x, int y);
 void keySpecialPressed(int key, int x, int y);
 
 // Client
+void initClient();
 void processAction(int action);
 
 // Test Models

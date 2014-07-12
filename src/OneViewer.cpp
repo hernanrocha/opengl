@@ -558,16 +558,39 @@ int main(int argc, char **argv) {
 	//cout << cos(degToRad(15)) << endl;
 	//cout << cos(degToRad(90)) << endl;
 
-	initScreen(1, true);
-
+	// Servidor
+	//initScreen(1, true);
 	//initServer();
+	//glutMainLoop();
+
+	// Cliente
+	initScreen(2, false);
+	initClient();
+	//Sleep(20000);
+	glutMainLoop();
+
+	//Sleep(1000);
+
+	//getchar();
+	//initClient();
+
+
+	//getchar();
+	//initClient();
 
 	// ------------------------ OBJ FILE ------------------------- //
 
 
 	//objTest();
 
-	glutMainLoop();
+
+	//cout << strcmp("a", "a") << endl;
+	//cout << strcmp("a", "b") << endl;
+
+	/*while (true){
+
+		cout << "A: " << getchar() << endl;
+	}*/
 
 	return 1;
 }
