@@ -11,6 +11,18 @@ float degToRad(float deg){
 	return deg * piover180;
 }
 
+void printIP(enet_uint32 host){
+	int a,b,c,d;
+	a = host % 256;
+	host = (host - a) / 256;
+	b = host % 256;
+	host = (host - b) / 256;
+	c = host % 256;
+	host = (host - c) / 256;
+	d = host % 256;
+	cout << a << "." << b << "." << c << "." << d;
+}
+
 Viewer viewer;
 map<int, Monitor> monitors;
 map<int, Screen> screens;
@@ -22,9 +34,186 @@ SOCKET comm_socket;
 char * serverIP;
 u_short serverPort;
 
-
 // Cliente
 SOCKET sock;
+
+// ENET
+ENetHost * server;
+ENetPeer * serverPeer;
+ENetHost * client;
+ENetPeer * clientPeer;
+
+void enviarHello(){
+	cout << "[Server] Saludo enviado" << endl;
+	ENetPacket * packet = enet_packet_create ("iasdasd",	strlen ("HolaSoyServer") + 1, ENET_PACKET_FLAG_RELIABLE);
+
+	enet_peer_send(serverPeer, 0, packet);
+	enet_host_flush(server);
+}
+
+void enviarHelloCliente(){
+	/* Create a reliable packet of size 7 containing "packet\0" */
+	ENetPacket * packet = enet_packet_create ("HolaSoyCliente",	strlen ("HolaSoyCliente") + 1, ENET_PACKET_FLAG_RELIABLE);
+	enet_peer_send(clientPeer, 0, packet);
+
+	enet_host_flush (client);
+	cout << "[Client] Saludo enviado" << endl;
+}
+
+void initPollingCliente(void *pMyID){
+	ENetEvent event;
+	unsigned char * dato;
+	int action;
+
+	// Wait up to 1000 milliseconds for an event.
+	while (enet_host_service(client, & event, 25000) > 0)
+	{
+		switch (event.type){
+		case ENET_EVENT_TYPE_CONNECT:
+			cout << "[Client] A new connection from " << event.peer->address.host << ":" << event.peer->address.port << endl;
+			break;
+		case ENET_EVENT_TYPE_RECEIVE:
+			cout << "[Client] Paquete recibido." << endl;
+			//cout << "[Client] " << event.packet->data << endl;
+
+			dato = event.packet->data;
+			action = atoi((char *) dato);
+			cout << "[Client] Accion recibida " << action << endl;
+			processAction(action);
+
+			//event.packet -> dataLength,
+			//event.packet -> data,
+			//event.peer -> data,
+			//event.channelID);
+			// Clean up the packet now that we're done using it.
+			enet_packet_destroy (event.packet);
+
+			break;
+
+		case ENET_EVENT_TYPE_DISCONNECT:
+			printf ("%s disconnected.\n", event.peer -> data);
+			// Reset the peer's client information.
+			event.peer -> data = NULL;
+			break;
+		default:
+			cout << "Type: " << event.type << endl;
+		}
+
+	}
+}
+
+void initPolling(void *pMyID){
+	ENetEvent serverEvent;
+
+	// Wait up to 1000 milliseconds for an event.
+	while (enet_host_service(server, & serverEvent, 25000) > 0)
+	{
+	    switch (serverEvent.type){
+	    case ENET_EVENT_TYPE_CONNECT:
+	        cout << "[Server] A new connection from " << serverEvent.peer->address.host << endl;
+	        serverPeer = serverEvent.peer;
+	        // Store any relevant client information here.
+	        //event.peer -> data = "Client information";
+	        enviarHello();
+	        break;
+	    case ENET_EVENT_TYPE_RECEIVE:
+	        cout << "[Server] Packet of length " << serverEvent.packet->dataLength << " from " << serverEvent.peer->address.host << endl;
+	        cout << "[Server] " << serverEvent.packet->data << endl;
+	                //event.packet -> dataLength,
+	                //event.packet -> data,
+	                //event.peer -> data,
+	                //event.channelID);
+	        // Clean up the packet now that we're done using it.
+	        enet_packet_destroy (serverEvent.packet);
+
+	        break;
+
+	    case ENET_EVENT_TYPE_DISCONNECT:
+	        printf ("%s disconnected.\n", serverEvent.peer -> data);
+	        // Reset the peer's client information.
+	        serverEvent.peer -> data = NULL;
+	        break;
+	    default:
+	    	cout << "Type: " << serverEvent.type << endl;
+	    }
+
+	}
+}
+
+void initEnetServer(){
+	// Server Address
+	ENetAddress serverAddress;
+	enet_address_set_host(& serverAddress, "");
+
+	//serverAddress.host = ENET_HOST_ANY;
+	serverAddress.port = SERVER_PORT;
+
+	// Create Host
+	server = enet_host_create (& serverAddress /* the address to bind the server host to */,
+			32      /* allow up to 32 clients and/or outgoing connections */,
+			2      /* allow up to 2 channels to be used, 0 and 1 */,
+			0      /* assume any amount of incoming bandwidth */,
+			0      /* assume any amount of outgoing bandwidth */);
+
+	if (server == NULL){
+		cout << "An error occurred while trying to create an ENet server host." << endl;
+		exit (EXIT_FAILURE);
+	} else {
+		cout << "Servidor abierto en ";
+		printIP(serverAddress.host);
+		cout << ":" << serverAddress.port << endl;
+		int threadID = 10;
+		_beginthread(initPolling, 0, &threadID);
+	}
+}
+
+void initEnetClient(){
+	ENetAddress address;
+	enet_address_set_host (&address, serverIP);
+	address.port = SERVER_PORT;
+
+	// Crear Cliente
+	client = enet_host_create (NULL /* create a client host */,
+			1 /* only allow 1 outgoing connection */,
+			2 /* allow up 2 channels to be used, 0 and 1 */,
+			57600 / 8 /* 56K modem with 56 Kbps downstream bandwidth */,
+			14400 / 8 /* 56K modem with 14 Kbps upstream bandwidth */);
+
+	if (client == NULL){
+		fprintf (stderr,
+				"An error occurred while trying to create an ENet client host.\n");
+		exit (EXIT_FAILURE);
+	}else{
+		cout << "[Client] Host abierto " << endl;
+	}
+
+	// Crear conexion
+	ENetPeer *peer;
+	peer = enet_host_connect (client, &address, 2, 0);
+	if (peer == NULL){
+		cout << "No available peers for initiating an ENet connection." << endl;
+		exit (EXIT_FAILURE);
+	}else{
+		cout << "[Client] Conexion preparada" << endl;
+	}
+
+	ENetEvent eventCliCon;
+	if (enet_host_service (client, & eventCliCon, 5000) > 0 &&	eventCliCon.type == ENET_EVENT_TYPE_CONNECT)
+	{
+	    cout << "[Client] Connection succeeded." << endl;
+
+	    // Init Polling
+		int threadID = 11;
+		_beginthread(initPollingCliente, 0, &threadID);
+
+		// Enviar Hello desde Cliente
+		clientPeer = peer;
+		enviarHelloCliente();
+	} else {
+	    enet_peer_reset (peer);
+	    puts ("[Client] Connection failed.");
+	}
+}
 
 void setServer(char * ip, u_short port){
 	cout << "Set Server " << ip << ":" << port << endl;
@@ -265,7 +454,8 @@ void processAction(int action){
 		viewer.yAngle -= 1.0;
 		break;
 	default:
-		break;
+		cout << "Caracteres no identificados" << endl;
+		return;
 	}
 
 	// Actualizar
@@ -439,7 +629,10 @@ void publishAction(int action){
 	sprintf(bufferSalida,"%d",action);
 	processAction(action);
 	//send(comm_socket,bufferSalida,strlen(bufferSalida),0);
-	send(comm_socket,bufferSalida,strlen(bufferSalida), MSG_OOB);
+	//send(comm_socket,bufferSalida,strlen(bufferSalida), MSG_OOB);
+	ENetPacket * packet = enet_packet_create (bufferSalida,	strlen (bufferSalida) + 1, ENET_PACKET_FLAG_RELIABLE);
+	enet_host_broadcast(server, 0, packet);
+	enet_host_flush(server);
 
 }
 

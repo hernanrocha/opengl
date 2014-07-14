@@ -6,6 +6,7 @@
 // Visit me at www.demonews.com/hosted/nehe
 // (email Richard Campbell at ulmont@bellsouth.net)
 //
+
 #include <GL/glut.h>    // Header File For The GLUT Library
 #include <GL/GLAux.h>
 #include <unistd.h>     // Header file for sleeping.
@@ -16,17 +17,15 @@
 #include <fstream>
 #include <stdio.h>
 #include <windows.h>
-#include <winsock.h>
+//#include <winsock.h>
 #include <math.h>
 #include <string>
 
 #include "Object3D.h"
 #include "Client.h"
 
+// ENET
 #include "enet/enet.h"
-ENetHost * server;
-
-//#include "boost/thread/thread.hpp"
 
 /* ascii code for the escape key */
 
@@ -526,134 +525,8 @@ bool isTest(){
 	return (strcmp(argumentos[1], "test") == 0);
 }
 
-void initPolling(void *pMyID){
-	ENetEvent event;
-	//ENetHost * client;
-
-	/* Wait up to 1000 milliseconds for an event. */
-	while (enet_host_service(server, & event, 1000) > 0)
-	{
-	    switch (event.type)
-	    {
-	    case ENET_EVENT_TYPE_CONNECT:
-	        printf ("A new client connected from %x:%u.\n",
-	                event.peer -> address.host,
-	                event.peer -> address.port);
-	        /* Store any relevant client information here. */
-	        //event.peer -> data = "Client information";
-	        break;
-	    case ENET_EVENT_TYPE_RECEIVE:
-	        printf ("A packet of length %u containing %s was received from %s on channel %u.\n",
-	                event.packet -> dataLength,
-	                event.packet -> data,
-	                event.peer -> data,
-	                event.channelID);
-	        /* Clean up the packet now that we're done using it. */
-	        enet_packet_destroy (event.packet);
-
-	        break;
-
-	    case ENET_EVENT_TYPE_DISCONNECT:
-	        printf ("%s disconnected.\n", event.peer -> data);
-	        /* Reset the peer's client information. */
-	        event.peer -> data = NULL;
-	    }
-	}
-}
-
-int enetTest(){
-	if (enet_initialize () != 0){
-		cout << "An error occurred while initializing ENet." << endl;
-		return EXIT_FAILURE;
-	}else{
-		cout << "Todo OK" << endl;
-
-		// Crear Servidor
-
-		ENetAddress address;
-		/* Bind the server to the default localhost.     */
-		/* A specific host address can be specified by   */
-		/* enet_address_set_host (& address, "x.x.x.x"); */
-		//address.host = ENET_HOST_ANY;
-		enet_address_set_host (& address, "192.168.1.33");
-		/* Bind the server to port 1234. */
-		address.port = 1234;
-		server = enet_host_create (& address /* the address to bind the server host to */,
-		                             32      /* allow up to 32 clients and/or outgoing connections */,
-		                              2      /* allow up to 2 channels to be used, 0 and 1 */,
-		                              0      /* assume any amount of incoming bandwidth */,
-		                              0      /* assume any amount of outgoing bandwidth */);
-		if (server == NULL){
-		    fprintf (stderr,
-		             "An error occurred while trying to create an ENet server host.\n");
-		    exit (EXIT_FAILURE);
-		}else{
-			cout << "Servidor abierto " << endl;
-		}
-
-
-		// Crear Cliente
-		ENetHost * client;
-		client = enet_host_create (NULL /* create a client host */,
-		            1 /* only allow 1 outgoing connection */,
-		            2 /* allow up 2 channels to be used, 0 and 1 */,
-		            57600 / 8 /* 56K modem with 56 Kbps downstream bandwidth */,
-		            14400 / 8 /* 56K modem with 14 Kbps upstream bandwidth */);
-		if (client == NULL){
-		    fprintf (stderr,
-		             "An error occurred while trying to create an ENet client host.\n");
-		    exit (EXIT_FAILURE);
-		}else{
-			cout << "Cliente abierto " << endl;
-		}
-
-		// Conexion
-		//ENetAddress address;
-		ENetEvent event;
-		ENetPeer *peer;
-		/* Connect to some.server.net:1234. */
-		//enet_address_set_host (& address, "localhost");
-		cout << address.host << endl;
-		//addressServ.port = 1234;
-		/* Initiate the connection, allocating the two channels 0 and 1. */
-		peer = enet_host_connect (client, & address, 2, 0);
-		if (peer == NULL)
-		{
-		   cout << "No available peers for initiating an ENet connection." << endl;
-		   exit (EXIT_FAILURE);
-		}else{
-			cout << "Hasta aca ok" << endl;
-		}
-
-		int threadID = 10;
-		cout << "[initServer] Iniciando Thread Server" << endl;
-		_beginthread(initPolling, 0, &threadID);
-		cout << "[initServer] Iniciado" << endl;
-
-		/* Wait up to 5 seconds for the connection attempt to succeed. */
-		if (enet_host_service (client, & event, 5000) > 0 &&
-		    event.type == ENET_EVENT_TYPE_CONNECT)
-		{
-		    cout << "Connection to some.server.net:1234 succeeded." << endl;
-		} else {
-		    /* Either the 5 seconds are up or a disconnect event was */
-		    /* received. Reset the peer in the event the 5 seconds   */
-		    /* had run out without any significant event.            */
-		    enet_peer_reset (peer);
-		    cout << "Connection to some.server.net:1234 failed." << endl;
-		}
-
-
-		Sleep(5000);
-		enet_host_destroy(client);
-		enet_host_destroy(server);
-
-	}
-	atexit (enet_deinitialize);
-}
-
 int main(int argc, char **argv) {
-	return enetTest();
+	//return enetTest();
 	//int serv = initServidor();
 	//PMYDATA data;
 	//DWORD threadID;
@@ -709,29 +582,42 @@ int main(int argc, char **argv) {
 
 	if (argc < 4){
 		cout << "Servidor por defecto" << endl;
-		setServer("192.168.1.35", 9090);
+		setServer("192.168.1.33", 9090);
 	}else {
 		char * ip = argumentos[2];
 		u_short port = atoi(argumentos[3]);
 		setServer(ip, port);
 	}
 
+	if (enet_initialize () != 0){
+		cout << "An error occurred while initializing ENet." << endl;
+		return EXIT_FAILURE;
+	}else{
+		cout << "Todo OK" << endl;
+	}
+
 	if(isTest()){
 		// Servidor y Cliente (TEST)
 		initScreen(1, true);
 		initScreen(2, true);
-		initServer();
-		Sleep(2000);
-		initClient();
-		Sleep(2000);
+		//initServer();
+		//Sleep(2000);
+		//initClient();
+		//Sleep(2000);
+
+		initEnetServer();
+		initEnetClient();
+		//Sleep(10000);
 	}else if (isServer()){
 		// Servidor
 		initScreen(2, true);
-		initServer();
+		//initServer();
+		initEnetServer();
 	}else if(isClient()){
 		// Cliente
 		initScreen(1, false);
-		initClient();
+		//initClient();
+		initEnetClient();
 	}
 
 	glutMainLoop();
