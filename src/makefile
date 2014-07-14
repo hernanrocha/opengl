@@ -2,9 +2,6 @@ INCLUDE = -I/usr/include/
 LIBDIR  = -Llib 
 
 COMPILERFLAGS = -Wall -std=c++11
-CC = gcc
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)
-LIBRARIES = -lopengl32 -lglut32 -lglu32
 
 # for all, set the targets to be every lesson1.c-lesson13.c 
 # file, removing the .c extension.  That is, at this point,

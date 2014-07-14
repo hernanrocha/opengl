@@ -19,9 +19,18 @@ map<int, Screen> windows;
 // Servidor
 char RecvBuff[MAXBUFLEN];
 SOCKET comm_socket;
+char * serverIP;
+u_short serverPort;
+
 
 // Cliente
 SOCKET sock;
+
+void setServer(char * ip, u_short port){
+	cout << "Set Server " << ip << ":" << port << endl;
+	serverIP = ip;
+	serverPort = port;
+}
 
 void initServidor(void *pMyID){
 
@@ -48,7 +57,7 @@ void initServidor(void *pMyID){
 	// Obtenemos la IP que usará nuestro servidor...
 	// en este caso localhost indica nuestra propia máquina...
 	hp = gethostbyname("localhost");
-	port = htons(SERVER_PORT);
+	port = htons(serverPort);
 
 	if(!hp){
 		printf("No se ha encontrado servidor...\n");
@@ -71,13 +80,13 @@ void initServidor(void *pMyID){
 	localIP = inet_ntoa (*(struct in_addr *)*localHost->h_addr_list);
 	server.sin_family=AF_INET; //
 	//server.sin_addr.s_addr = INADDR_ANY; //
-	server.sin_addr.s_addr = inet_addr (SERVER_IP);
-	server.sin_port = htons(SERVER_PORT);
+	server.sin_addr.s_addr = inet_addr (serverIP);
+	server.sin_port = htons(serverPort);
 	bind(conn_socket,(SOCKADDR*)&server,sizeof(server));
 
 	// Abrir Servidor
 	listen(conn_socket, 8);
-	cout << "[Server] Servidor en escucha en " << localIP << ":" << SERVER_PORT << endl;
+	cout << "[Server] Servidor en escucha en " << serverIP << ":" << serverPort << endl;
 
 	while (true){
 
@@ -95,13 +104,15 @@ void initServidor(void *pMyID){
 			// Recibir informacion
 			int i;
 			char buffer[1025];
-			i= recv(comm_socket,buffer,1024,0);
+			//i= recv(comm_socket,buffer,1024,0);
+			i= recv(comm_socket,buffer,1024,MSG_OOB);
 
 			cout << "i: " << i << endl;
 
 			// Enviar contestacion
 			char bufferSalida[] = "OK";
-			int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+			//int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+			int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),MSG_OOB);
 
 			// Se visualiza lo recibido
 			buffer[i] = '\0';
@@ -164,8 +175,8 @@ void initCliente(void *pMyID){
 
 	// Configurar servidor
 	servidor.sin_family = AF_INET;
-	servidor.sin_addr.s_addr = inet_addr (SERVER_IP);
-	servidor.sin_port = htons(SERVER_PORT);
+	servidor.sin_addr.s_addr = inet_addr (serverIP);
+	servidor.sin_port = htons(serverPort);
 	cout << "[Client] Conectando al servidor en " << inet_ntoa(servidor.sin_addr) << ":" << ntohs(servidor.sin_port) << endl;
 
 	SOCKET j = connect( sock, (sockaddr*)&servidor, sizeof servidor );
@@ -180,7 +191,7 @@ void initCliente(void *pMyID){
 
 	// Enviar contestacion
 	char bufferSalida[] = "Hola soy el Cliente, Saludos!";
-	int enviado = send(sock, bufferSalida,strlen(bufferSalida),0);
+	int enviado = send(sock, bufferSalida,strlen(bufferSalida),MSG_OOB);
 	cout << "[Client] Enviados "  << enviado << " bytes."<< endl;
 
 	// Cerramos el socket de comunicacion
@@ -188,14 +199,17 @@ void initCliente(void *pMyID){
 		// Recibir informacion
 		int i;
 		char buffer[1025];
-		i= recv(sock,buffer,1024,0);
+		//i= recv(sock,buffer,1024,0);
+		i = recv(sock, buffer, 1024, MSG_OOB);
 		buffer[i] = '\0';
 
 		// Se visualiza lo recibido
 		//cout << "Paquete proveniente de: " << inet_ntoa(client.sin_addr) << ":" << ntohs(client.sin_port) << endl;
 		cout << "[Client] Recibidos: " << i << " bytes." << endl;
 		cout << "[Client] El paquete contiene: " << buffer << endl;
-		if (strcmp(buffer, "1") == 0){
+		int action = atoi(buffer);
+		processAction(action);
+		/*if (strcmp(buffer, "1") == 0){
 			cout << "Izquierda " << endl;
 			processAction(ACTION_MOVE_LEFT);
 		}else if (strcmp(buffer, "2") == 0){
@@ -203,7 +217,7 @@ void initCliente(void *pMyID){
 			processAction(ACTION_MOVE_RIGHT);
 		}else{
 			cout << "no se" << endl;
-		}
+		}*/
 	}
 
 	closesocket(sock);
@@ -421,10 +435,11 @@ void drawGLScene(int windowID){
 }
 
 void publishAction(int action){
-	//processAction(action);
-	char bufferSalida[] = "2";
-	send(comm_socket,bufferSalida,strlen(bufferSalida),0);
-	//send(comm_socket,bufferSalida,strlen(bufferSalida), MSG_OOB);
+	char bufferSalida[1];
+	sprintf(bufferSalida,"%d",action);
+	processAction(action);
+	//send(comm_socket,bufferSalida,strlen(bufferSalida),0);
+	send(comm_socket,bufferSalida,strlen(bufferSalida), MSG_OOB);
 
 }
 

@@ -39,8 +39,8 @@
 
 // Server
 #define MAXBUFLEN 512
-#define SERVER_IP "192.168.1.33"
-#define SERVER_PORT 9999
+//#define SERVER_IP "192.168.1.35"
+//#define SERVER_PORT 9999
 
 // Client
 #define CLIENT_PORT 10000
@@ -82,6 +82,7 @@ using namespace std;
 void setViewer(GLfloat x, GLfloat y, GLfloat z);
 void setupMonitor();
 void setupScreen();
+void setServer(char * ip, u_short port);
 
 void addMonitor(Monitor mon);
 void initScreen(int screenID, bool server = true);
