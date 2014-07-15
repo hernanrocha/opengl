@@ -32,7 +32,7 @@ map<int, Screen> windows;
 char RecvBuff[MAXBUFLEN];
 SOCKET comm_socket;
 char * serverIP;
-u_short serverPort;
+//u_short serverPort;
 
 // Cliente
 SOCKET sock;
@@ -215,218 +215,9 @@ void initEnetClient(){
 	}
 }
 
-void setServer(char * ip, u_short port){
-	cout << "Set Server " << ip << ":" << port << endl;
+void setServer(char * ip){
+	cout << "Set Server " << ip << endl;
 	serverIP = ip;
-	serverPort = port;
-}
-
-void initServidor(void *pMyID){
-
-	WSADATA wsaData;
-	SOCKET conn_socket;
-	//SOCKET comunicacion;
-	struct sockaddr_in server;
-	struct sockaddr_in client;
-	struct hostent *hp;
-	int resp,stsize;
-	u_short port;
-	hostent* localHost;
-	char* localIP;
-
-	//Inicializamos la DLL de sockets
-	resp = WSAStartup(MAKEWORD(2,0),&wsaData);
-	if(resp){
-		printf("Error al inicializar socket\n");
-		getchar();
-		//return resp;
-		return;
-	}
-
-	// Obtenemos la IP que usará nuestro servidor...
-	// en este caso localhost indica nuestra propia máquina...
-	hp = gethostbyname("localhost");
-	port = htons(serverPort);
-
-	if(!hp){
-		printf("No se ha encontrado servidor...\n");
-		WSACleanup();
-		return;
-	}
-
-	// Creamos el socket...
-	conn_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(conn_socket==INVALID_SOCKET) {
-		printf("Error al crear socket\n");
-		WSACleanup();
-		return;
-	}else {
-		cout << "Socket creado.. " << endl;
-	}
-
-	// Configurar servidor
-	localHost = gethostbyname("");
-	localIP = inet_ntoa (*(struct in_addr *)*localHost->h_addr_list);
-	server.sin_family=AF_INET; //
-	//server.sin_addr.s_addr = INADDR_ANY; //
-	server.sin_addr.s_addr = inet_addr (serverIP);
-	server.sin_port = htons(serverPort);
-	bind(conn_socket,(SOCKADDR*)&server,sizeof(server));
-
-	// Abrir Servidor
-	listen(conn_socket, 8);
-	cout << "[Server] Servidor en escucha en " << serverIP << ":" << serverPort << endl;
-
-	while (true){
-
-		// Esperar cliente
-		int len = sizeof(struct sockaddr);
-		//client.sin_family = AF_INET;
-		//client.sin_addr.s_addr = inet_addr (SERVER_IP);
-		memcpy(&server, &client, sizeof(SOCKADDR));
-		comm_socket = accept(conn_socket,(sockaddr*)&client,&len);
-
-		//if (comm_socket == INVALID_SOCKET){
-			//printf("accept failed with error code : %d" , WSAGetLastError());
-
-		//}else {
-			// Recibir informacion
-			int i;
-			char buffer[1025];
-			//i= recv(comm_socket,buffer,1024,0);
-			i= recv(comm_socket,buffer,1024,MSG_OOB);
-
-			cout << "i: " << i << endl;
-
-			// Enviar contestacion
-			char bufferSalida[] = "OK";
-			//int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),0);
-			int enviado = send(comm_socket,bufferSalida,strlen(bufferSalida),MSG_OOB);
-
-			// Se visualiza lo recibido
-			buffer[i] = '\0';
-			cout << "[Server] Paquete proveniente de: " << inet_ntoa(client.sin_addr) << ":" << ntohs(client.sin_port) << endl;
-			cout << "[Server] Longitud del paquete en bytes: " << i << "..." << endl;
-			cout << "[Server] El paquete contiene: " << buffer << endl;
-			//getchar();
-		//}
-	}
-
-	// Cerramos el socket de comunicacion
-	closesocket(conn_socket);
-
-	return;
-	//return 0;
-
-}
-
-void initCliente(void *pMyID){
-
-	WSADATA wsaData;
-	struct sockaddr_in servidor;
-	struct hostent *hp;
-	int resp,stsize;
-	u_short port;
-
-	//Inicializamos la DLL de sockets
-	resp = WSAStartup(MAKEWORD(2,0),&wsaData);
-	if(resp){
-		printf("Error al inicializar socket\n");
-		getchar();
-		//return resp;
-		return;
-	}
-
-	// Obtenemos la IP que usará nuestro servidor...
-	// en este caso localhost indica nuestra propia máquina...
-	//hp = gethostbyname("localhost");
-	//port = htons(CLIENT_PORT);
-
-	/*if(!hp){
-		printf("No se ha encontrado servidor...\n");
-		getchar();
-		WSACleanup();
-		//return WSAGetLastError();
-		return;
-	}*/
-
-	// Creamos el socket CLIENTE...
-	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(sock==INVALID_SOCKET) {
-		printf("Error al crear socket\n");
-		getchar();
-		WSACleanup();
-		//return WSAGetLastError();
-		return;
-	}else {
-		cout << "Socket cliente creado.. " << endl;
-	}
-
-	// Configurar servidor
-	servidor.sin_family = AF_INET;
-	servidor.sin_addr.s_addr = inet_addr (serverIP);
-	servidor.sin_port = htons(serverPort);
-	cout << "[Client] Conectando al servidor en " << inet_ntoa(servidor.sin_addr) << ":" << ntohs(servidor.sin_port) << endl;
-
-	SOCKET j = connect( sock, (sockaddr*)&servidor, sizeof servidor );
-	if ( j == SOCKET_ERROR ){
-	    cout << "No se puede conectar" << endl;
-	    return;
-	}else {
-		cout << "Conectado " << endl;
-		cout << inet_ntoa(servidor.sin_addr) << ":" << ntohs(servidor.sin_port) << endl;
-		//cout << inet_ntoa(cliente.sin_addr) << ":" << ntohs(cliente.sin_port) << endl;
-	}
-
-	// Enviar contestacion
-	char bufferSalida[] = "Hola soy el Cliente, Saludos!";
-	int enviado = send(sock, bufferSalida,strlen(bufferSalida),MSG_OOB);
-	cout << "[Client] Enviados "  << enviado << " bytes."<< endl;
-
-	// Cerramos el socket de comunicacion
-	while(true){
-		// Recibir informacion
-		int i;
-		char buffer[1025];
-		//i= recv(sock,buffer,1024,0);
-		i = recv(sock, buffer, 1024, MSG_OOB);
-		buffer[i] = '\0';
-
-		// Se visualiza lo recibido
-		//cout << "Paquete proveniente de: " << inet_ntoa(client.sin_addr) << ":" << ntohs(client.sin_port) << endl;
-		cout << "[Client] Recibidos: " << i << " bytes." << endl;
-		cout << "[Client] El paquete contiene: " << buffer << endl;
-		int action = atoi(buffer);
-		processAction(action);
-		/*if (strcmp(buffer, "1") == 0){
-			cout << "Izquierda " << endl;
-			processAction(ACTION_MOVE_LEFT);
-		}else if (strcmp(buffer, "2") == 0){
-			cout << "Derecha " << endl;
-			processAction(ACTION_MOVE_RIGHT);
-		}else{
-			cout << "no se" << endl;
-		}*/
-	}
-
-	closesocket(sock);
-
-	return;
-
-}
-
-void initServer(){
-	int threadID = 10;
-	cout << "[initServer] Iniciando Thread Server" << endl;
-	_beginthread(initServidor, 0, &threadID);
-	cout << "[initServer] Iniciado" << endl;
-}
-
-void initClient(){
-	int threadID = 20;
-	cout << "[initClient] Iniciando Thread Client" << endl;
-	_beginthread(initCliente, 0, &threadID);
-	cout << "[initClient] Iniciado" << endl;
 }
 
 void processAction(int action){
@@ -492,6 +283,24 @@ void setupMonitor(){
 	mon2.w = 1440;
 	mon2.h = 900;
 	addMonitor(mon2);
+
+	// Monitor 3
+	Monitor lg47;
+	lg47.id = 3;
+	lg47.x = 0;
+	lg47.y = 0;
+	lg47.w = 1920;
+	lg47.h = 1080;
+	addMonitor(lg47);
+
+	Monitor lg47b;
+	lg47b.id = 4;
+	lg47b.x = 1366;
+	lg47b.y = 0;
+	lg47b.w = 1920;
+	lg47b.h = 1080;
+	addMonitor(lg47b);
+
 }
 
 void setupScreen(){
@@ -558,19 +367,60 @@ void setupScreen(){
 	screens[4] = scr4;
 }
 
+void loadINI(){
+	INIReader reader("test.ini");
+
+	if (reader.ParseError() < 0) {
+		cout << "Can't load 'test.ini'\n";
+		return;
+	}
+
+	int cantScreens = reader.GetInteger("screens", "cant", 0);
+	cout << "Hay " << cantScreens << " screens" << endl;
+
+	for (int i = 1; i <= cantScreens; i++){
+		char section[16];
+		sprintf(section, "scr%d", i);
+
+		Screen scr;
+		scr.id = reader.GetInteger(section, "id", 0);
+		scr.centerX = reader.GetReal(section, "centerX", 0.0f);
+		scr.centerY = reader.GetReal(section, "centerY", 0.0f);
+		scr.centerZ = reader.GetReal(section, "centerZ", 0.0f);
+		scr.left = reader.GetReal(section, "left", 0.0f);
+		scr.right = reader.GetReal(section, "right", 0.0f);
+		scr.bottom = reader.GetReal(section, "bottom", 0.0f);
+		scr.top = reader.GetReal(section, "top", 0.0f);
+		scr.dist = reader.GetReal(section, "dist", 0.0f);
+		scr.mon = monitors[reader.GetInteger(section, "mon", 0)];
+
+		cout << "Add Screen " << scr.id << endl;
+		screens[scr.id] = scr;
+	}
+
+
+	/*cout << "Config loaded from 'test.ini': version="
+			<< reader.GetInteger(screen, "version", -1) << ", name="
+			<< reader.Get("user", "name", "UNKNOWN") << ", email="
+			<< reader.Get("user", "email", "UNKNOWN") << ", pi="
+			<< reader.GetReal("user", "pi", -1) << ", active="
+			<< reader.GetBoolean("user", "active", true) << "\n";*/
+	//string nombreScreen = reader.Get("screen" + 1, )
+}
+
 void drawSnowMan() {
 
 	glColor3f(1.0f, 1.0f, 1.0f);
 
-// Draw Body
+	// Draw Body
 	glTranslatef(0.0f ,0.75f, 0.0f);
 	glutSolidSphere(0.75f,20,20);
 
-// Draw Head
+	// Draw Head
 	glTranslatef(0.0f, 1.0f, 0.0f);
 	glutSolidSphere(0.25f,20,20);
 
-// Draw Eyes
+	// Draw Eyes
 	glPushMatrix();
 	glColor3f(0.0f,0.0f,0.0f);
 	glTranslatef(0.05f, 0.10f, 0.18f);
@@ -579,7 +429,7 @@ void drawSnowMan() {
 	glutSolidSphere(0.05f,10,10);
 	glPopMatrix();
 
-// Draw Nose
+	// Draw Nose
 	glColor3f(1.0f, 0.5f , 0.5f);
 	glutSolidCone(0.08f,0.5f,10,2);
 }

@@ -39,7 +39,6 @@
 
 // Server
 #define MAXBUFLEN 512
-//#define SERVER_IP "192.168.1.35"
 #define SERVER_PORT 9999
 
 // Client
@@ -69,48 +68,36 @@ struct Screen {
 	Monitor mon;
 };
 
-#include <winsock.h>    // Soporte a Sockets
-
 // Enet
 #include "enet/enet.h"
 
+// INI
+#include "ini/INIReader.h"
+
 using namespace std;
-
-//class Client {
-//public:
-//	Client();
-//	virtual ~Client();
-
 
 void setViewer(GLfloat x, GLfloat y, GLfloat z);
 void setupMonitor();
 void setupScreen();
-void setServer(char * ip, u_short port);
+void loadINI();
+void setServer(char * ip);
 
 void addMonitor(Monitor mon);
 void initScreen(int screenID, bool server = true);
 void drawGLScene(int windowID);
 
 // Server
-void initServer();
+void initEnetServer();
 void publishAction(int action);
 void keyPressed(unsigned char key, int x, int y);
 void keySpecialPressed(int key, int x, int y);
 
 // Client
-void initClient();
+void initEnetClient();
 void processAction(int action);
 
 // Test Models
 void drawSnowMan();
 void snowTest();
-
-// Enet
-void initEnetServer();
-void initEnetClient();
-
-
-//private:
-//};
 
 #endif /* CLIENT_H_ */
